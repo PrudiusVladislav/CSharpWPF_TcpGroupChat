@@ -1,0 +1,73 @@
+﻿<Window x:Class="CSharpWPF_TcpChat.Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CSharpWPF_TcpChat.Client"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="700">
+    <Window.DataContext>
+        <local:MainViewModel/>
+    </Window.DataContext>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="0.2*"></RowDefinition>
+            <RowDefinition></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.5*"></ColumnDefinition>
+                <ColumnDefinition Width="2.2*"></ColumnDefinition>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Label Content="Enter username: "
+                   FontSize="22" VerticalContentAlignment="Center"
+                   HorizontalContentAlignment="Center"></Label>
+            <TextBox Grid.Column="1" FontSize="23"
+                     Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
+                     VerticalContentAlignment="Center"
+                     Padding="10 0"></TextBox>
+            <Button Grid.Column="2" Content="Connect" FontSize="20" FontWeight="DemiBold"
+                    Command="{Binding ConnectCommand}"/>
+            <Button Grid.Column="3" Content="Disconnect" FontSize="20" FontWeight="DemiBold"
+                    Command="{Binding DisconnectCommand}"/>
+        </Grid>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition Width="1.5*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <ListBox ItemsSource="{Binding AvailableClients, UpdateSourceTrigger=PropertyChanged}"
+                     FontSize="20" HorizontalContentAlignment="Center">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding UserName}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="4.5*"></RowDefinition>
+                    <RowDefinition></RowDefinition>
+                </Grid.RowDefinitions>
+                <ListBox ItemsSource="{Binding ChatMessages, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="16" Padding="10">
+                </ListBox>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="5*"></ColumnDefinition>
+                        <ColumnDefinition></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding EnteredMessage,UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="22" Padding="10 0"
+                             VerticalContentAlignment="Center">
+                    </TextBox>
+                    <Button Grid.Column="1" Content="SEND" FontSize="23"
+                            FontWeight="DemiBold" Command="{Binding SendCommand}">
+                    </Button>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
