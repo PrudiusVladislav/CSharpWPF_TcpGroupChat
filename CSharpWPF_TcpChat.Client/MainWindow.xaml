@@ -38,13 +38,8 @@
                 <ColumnDefinition></ColumnDefinition>
                 <ColumnDefinition Width="1.5*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
-            <ListBox ItemsSource="{Binding AvailableClients, UpdateSourceTrigger=PropertyChanged}"
+            <ListBox ItemsSource="{Binding AvailableClientsNames, UpdateSourceTrigger=PropertyChanged}"
                      FontSize="20" HorizontalContentAlignment="Center">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding UserName}"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
             </ListBox>
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions>

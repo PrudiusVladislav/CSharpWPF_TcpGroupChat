@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,11 +15,13 @@ namespace CSharpWPF_TcpChat.Client;
 public class MainViewModel: ObservableObject
 {
     private Infrastructure.Client? client;
-    public ObservableCollection<ClientModel> AvailableClients { get; }
+
+    public ObservableCollection<string> AvailableClientsNames { get; set; }
     public ObservableCollection<string> ChatMessages { get; set; }
     public ICommand ConnectCommand { get; }
     public ICommand SendCommand { get; }
     public ICommand DisconnectCommand { get; }
+    
     private string? username;
     public string? UserName
     {
@@ -43,18 +46,16 @@ public class MainViewModel: ObservableObject
     
     public MainViewModel()
     {
-        var clientRepositoryInstance = ClientsRepository.Instance;
-        clientRepositoryInstance.ClientAdded += HandleClientAdded;
-        clientRepositoryInstance.ClientRemoved += HandleClientRemoved;
-        AvailableClients = new ObservableCollection<ClientModel>(clientRepositoryInstance.GetConnectedClients());
+        AvailableClientsNames = new ObservableCollection<string>();
         ChatMessages = new ObservableCollection<string>();
+
         
         ConnectCommand = new RelayCommand((command) =>
         {
             ExecuteConnectCommand();
         }, o =>
         {
-            if (string.IsNullOrWhiteSpace(UserName) || AvailableClients.Select(c => c.UserName.Equals(UserName)).Any()) return false;
+            if (string.IsNullOrWhiteSpace(UserName) || AvailableClientsNames.Contains(UserName)) return false;
             if (client != null)
                 return !client.IsConnected;
             return true;
@@ -79,18 +80,16 @@ public class MainViewModel: ObservableObject
 
     private async void ExecuteDisconnectCommand()
     {
-        await client!.SendMessageAsync(MessageModel.ExitMessage);
+        await client!.SendMessageAsync(MessageModel.SystemMessageByteOption,MessageModel.ExitMessage);
     }
     
-    private void HandleClientAdded(ClientModel addedClient)
+    private void HandleClientAdded(string addedUsername)
     {
-        AvailableClients.Add(addedClient);
-        Console.WriteLine("Inside the HandleClientAdded method");
+        AvailableClientsNames.Add(addedUsername);
     }
-    private void HandleClientRemoved(ClientModel removedClient)
+    private void HandleClientRemoved(string removedUsername)
     {
-        AvailableClients.Remove(removedClient);
-        Console.WriteLine("Inside the HandleClientRemoved method");
+        AvailableClientsNames.Remove(removedUsername);
     }
     
     private async void ExecuteConnectCommand()
@@ -98,12 +97,18 @@ public class MainViewModel: ObservableObject
         client = new Infrastructure.Client(UserName);
         client.MessageReceived += HandleMessageReceived;
         client.EventOccurred += HandleEventOccurred;
+        client.NewUserAdded += HandleClientAdded;
+        client.UserRemoved += HandleClientRemoved;
+        client.UsersListReceived += HandleUsersListReceived;
+        client.MessagesListReceived += HandleMessagesListReceived;
+        
+        
         await client.InitiateClientAsync();
     }
 
     private async void ExecuteSendMessageCommand()
     {
-        await client!.SendMessageAsync(EnteredMessage!);
+        await client!.SendMessageAsync(MessageModel.CommonMessageByteOption, EnteredMessage!);
         EnteredMessage = string.Empty;
     }
     
@@ -112,6 +117,30 @@ public class MainViewModel: ObservableObject
         ChatMessages.Add(message);
     }
 
+    private void HandleUsersListReceived(List<string> usernames)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            AvailableClientsNames.Clear();
+            foreach (var name in usernames)
+            {
+                AvailableClientsNames.Add(name);
+            }
+        });
+    }
+    
+    private void HandleMessagesListReceived(List<string> messages)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            ChatMessages.Clear();
+            foreach (var msg in messages)
+            {
+                ChatMessages.Add(msg);
+            }
+        });
+    }
+    
     private void HandleEventOccurred(string eventMessage)
     {
         MessageBox.Show(eventMessage, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
