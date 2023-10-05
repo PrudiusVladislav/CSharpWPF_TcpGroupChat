@@ -9,7 +9,7 @@ using CSharpWPF_TcpChat.Client.Infrastructure;
 using Microsoft.VisualBasic;
 using SharedComponents;
 
-namespace CSharpWPF_TcpChat.Client;
+namespace CSharpWPF_TcpChat.Client.ViewModels;
 
 
 public class MainViewModel: ObservableObject
