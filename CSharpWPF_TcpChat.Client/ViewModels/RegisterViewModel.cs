@@ -1,6 +1,8 @@
+using SharedComponents;
+
 namespace CSharpWPF_TcpChat.Client.ViewModels;
 
-public class RegisterViewModel
+public class RegisterViewModel: ObservableObject
 {
     
 }
