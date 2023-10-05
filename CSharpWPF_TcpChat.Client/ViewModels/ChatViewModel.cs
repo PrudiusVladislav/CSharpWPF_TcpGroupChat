@@ -9,7 +9,7 @@ namespace CSharpWPF_TcpChat.Client.ViewModels;
 
 public class ChatViewModel: ObservableObject
 {
-    private Infrastructure.Client? client;
+    private Infrastructure.Client? _client;
 
     public ObservableCollection<string> AvailableClientsNames { get; set; }
     public ObservableCollection<string> ChatMessages { get; set; }
@@ -39,7 +39,7 @@ public class ChatViewModel: ObservableObject
         }
     }
     
-    public ChatViewModel()
+    public ChatViewModel(SharedComponents.EF_Models.Client dbClient)
     {
         AvailableClientsNames = new ObservableCollection<string>();
         ChatMessages = new ObservableCollection<string>();
@@ -51,8 +51,8 @@ public class ChatViewModel: ObservableObject
         }, o =>
         {
             if (string.IsNullOrWhiteSpace(UserName) || AvailableClientsNames.Contains(UserName)) return false;
-            if (client != null)
-                return !client.IsConnected;
+            if (_client != null)
+                return !_client.IsConnected;
             return true;
         });
 
@@ -62,20 +62,20 @@ public class ChatViewModel: ObservableObject
             },
             o => 
             {
-                if (string.IsNullOrWhiteSpace(EnteredMessage) || client == null) return false;
-                return client.IsConnected;
+                if (string.IsNullOrWhiteSpace(EnteredMessage) || _client == null) return false;
+                return _client.IsConnected;
             }
         );
 
         DisconnectCommand = new RelayCommand((command) =>
         {
             ExecuteDisconnectCommand();
-        },o => client is { IsConnected: true });
+        },o => _client is { IsConnected: true });
     }
 
     private async void ExecuteDisconnectCommand()
     {
-        await client!.SendMessageAsync(MessageModel.SystemMessageByteOption,MessageModel.ExitMessage);
+        await _client!.SendMessageAsync(MessageModel.SystemMessageByteOption,MessageModel.ExitMessage);
     }
     
     private void HandleClientAdded(string addedUsername)
@@ -89,21 +89,21 @@ public class ChatViewModel: ObservableObject
     
     private async void ExecuteConnectCommand()
     {
-        client = new Infrastructure.Client(UserName);
-        client.MessageReceived += HandleMessageReceived;
-        client.EventOccurred += HandleEventOccurred;
-        client.NewUserAdded += HandleClientAdded;
-        client.UserRemoved += HandleClientRemoved;
-        client.UsersListReceived += HandleUsersListReceived;
-        client.MessagesListReceived += HandleMessagesListReceived;
+        _client = new Infrastructure.Client(UserName);
+        _client.MessageReceived += HandleMessageReceived;
+        _client.EventOccurred += HandleEventOccurred;
+        _client.NewUserAdded += HandleClientAdded;
+        _client.UserRemoved += HandleClientRemoved;
+        _client.UsersListReceived += HandleUsersListReceived;
+        _client.MessagesListReceived += HandleMessagesListReceived;
         
         
-        await client.InitiateClientAsync();
+        await _client.InitiateClientAsync();
     }
 
     private async void ExecuteSendMessageCommand()
     {
-        await client!.SendMessageAsync(MessageModel.CommonMessageByteOption, EnteredMessage!);
+        await _client!.SendMessageAsync(MessageModel.CommonMessageByteOption, EnteredMessage!);
         EnteredMessage = string.Empty;
     }
     

@@ -13,29 +13,34 @@
         </Grid.RowDefinitions>
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.5*"></ColumnDefinition>
-                <ColumnDefinition Width="2.2*"></ColumnDefinition>
                 <ColumnDefinition></ColumnDefinition>
                 <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition Width="2.4*"></ColumnDefinition>
+                <ColumnDefinition Width="1.1*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
-            <Label Content="Enter username: "
-                   FontSize="22" VerticalContentAlignment="Center"
-                   HorizontalContentAlignment="Center"></Label>
-            <TextBox Grid.Column="1" FontSize="23"
-                     Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
-                     VerticalContentAlignment="Center"
-                     Padding="10 0"></TextBox>
-            <Button Grid.Column="2" Content="Connect" FontSize="20" FontWeight="DemiBold"
-                    Command="{Binding ConnectCommand}"/>
-            <Button Grid.Column="3" Content="Disconnect" FontSize="20" FontWeight="DemiBold"
+            <Button Grid.Column="0" Content="Disconnect" FontSize="20" FontWeight="DemiBold"
                     Command="{Binding DisconnectCommand}"/>
+            <Button Grid.Column="1" Content="Settings" 
+                    FontSize="20" FontWeight="DemiBold"></Button>
+            <TextBlock Grid.Column="2" VerticalAlignment="Center" 
+                       Padding="10 0 0 0" FontSize="20">
+                <Run Text="Chat name: "></Run>
+                <Run Text="{Binding SelectedChat.ChatName}" FontWeight="SemiBold"></Run>
+            </TextBlock>
+            <TextBlock Grid.Column="3" FontSize="20"
+                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                       Padding="10 0 0 0" >
+                <Run Text="Members:"></Run>
+                <LineBreak />
+                <Run Text="{Binding SelectedChat.Members}" FontWeight="SemiBold"></Run>
+            </TextBlock>
         </Grid>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition></ColumnDefinition>
-                <ColumnDefinition Width="1.5*"></ColumnDefinition>
+                <ColumnDefinition Width="1.7*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
-            <ListBox ItemsSource="{Binding AvailableClientsNames, UpdateSourceTrigger=PropertyChanged}"
+            <ListBox ItemsSource="{Binding AvailableChats, UpdateSourceTrigger=PropertyChanged}"
                      FontSize="20" HorizontalContentAlignment="Center">
             </ListBox>
             <Grid Grid.Column="1">

@@ -1,12 +1,17 @@
 
 using SharedComponents;
+using SharedComponents.EF_Models;
 
 namespace CSharpWPF_TcpChat.Client.ViewModels;
 
 
 public class MainViewModel: ObservableObject
 {
-    private LoginViewModel? _loginVM;
+    public LoginViewModel? LoginVM { get; set; }
+    public RegisterViewModel?  RegisterVM{ get; set; }
+    public ChatViewModel? ChatVM { get; set; }
+    public ChatDbContextFactory ChatContextFactory { get;}
+    
     private ObservableObject? _currentViewModel;
     public ObservableObject? CurrentViewModel
     {
@@ -20,8 +25,9 @@ public class MainViewModel: ObservableObject
 
     public MainViewModel()
     {
-        _loginVM = new LoginViewModel(this);
-        CurrentViewModel = _loginVM;
+        ChatContextFactory = new ChatDbContextFactory();
+        LoginVM = new LoginViewModel(this);
+        CurrentViewModel = LoginVM;
     }
     
 }
