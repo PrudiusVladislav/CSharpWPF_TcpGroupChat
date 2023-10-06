@@ -55,7 +55,7 @@ public class LoginViewModel: ObservableObject
         var client = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(Username));
         if (client != null && client.Password.Equals(Password))
         {
-            _mainViewModel.CurrentViewModel = new ChatViewModel(client);
+            _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, client);
         }
         else
             MessageBox.Show("Client with such username does not exist or wrong password has been entered",

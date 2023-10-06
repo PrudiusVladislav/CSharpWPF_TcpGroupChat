@@ -72,6 +72,8 @@ public class Server
                     break;
                 }
                 
+                ////////////////////////handle add requests with parameters (names) here
+                
                 Console.WriteLine($"[{DateTime.Now}] user with username {user.UserName} has sent message: {receivedMessage}");
                 var messageModel = new MessageModel(user.UserName, DateTime.Now, receivedMessage);
                 _messages.Add(messageModel.ToString());

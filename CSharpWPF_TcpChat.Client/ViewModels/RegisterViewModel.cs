@@ -59,7 +59,11 @@ public class RegisterViewModel: ObservableObject
         }
         else
         {
-            
+            _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, new SharedComponents.EF_Models.Client()
+            {
+                Username = this.Username,
+                Password = this.Password
+            });
         }
     }
 }
