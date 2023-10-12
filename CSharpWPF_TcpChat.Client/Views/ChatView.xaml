@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:CSharpWPF_TcpChat.Client.Views"
+             xmlns:viewModels="clr-namespace:CSharpWPF_TcpChat.Client.ViewModels"
              mc:Ignorable="d"
              d:DesignHeight="500" d:DesignWidth="800">
     <Grid>
@@ -26,14 +27,16 @@
             <TextBlock Grid.Column="2" VerticalAlignment="Center" 
                        Margin="20 0 0 0" FontSize="20">
                 <Run Text="Chat name: "></Run>
-                <Run Text="{Binding SelectedChatName}" FontWeight="SemiBold"></Run>
+                <Run Text="{Binding SelectedChatName,
+                 UpdateSourceTrigger=PropertyChanged}" FontWeight="SemiBold"></Run>
             </TextBlock>
             <TextBlock Grid.Column="3" FontSize="20"
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        Padding="10 0 0 0">
                 <Run Text="Members:"></Run>
                 <LineBreak />
-                <Run Text="{Binding MembersNumber}" FontWeight="SemiBold"></Run>
+                <Run Text="{Binding MembersNumber, 
+                UpdateSourceTrigger=PropertyChanged}" FontWeight="SemiBold"></Run>
             </TextBlock>
         </Grid>
         <Grid Grid.Row="1">

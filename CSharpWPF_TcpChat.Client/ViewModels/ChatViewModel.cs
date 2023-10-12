@@ -119,7 +119,7 @@ public class ChatViewModel: ObservableObject
     
     private async void ExecuteSendMessageCommand()
     {
-        await _client!.SendMessageAsync(MessageModel.CommonMessageByteOption, EnteredMessage!);
+        await _client!.SendMessageAsync(MessageModel.CommonMessageByteOption, $"{SelectedChatName}{MessageModel.MessageSeparator}{EnteredMessage}");
         EnteredMessage = string.Empty;
     }
     
@@ -201,13 +201,13 @@ public class ChatViewModel: ObservableObject
 
         //this executes if the selected chat name is name of a group
         var group = await dbContext.Groups.Include(g => g.Messages)
-            .ThenInclude(message => message.SenderClient).Include(group => group.GroupClients).FirstOrDefaultAsync(g => g.GroupName == SelectedChatName);
+            .ThenInclude(message => message.SenderClient).Include(group => group.GroupMembers).FirstOrDefaultAsync(g => g.GroupName == SelectedChatName);
         if (group != null)
         {
             ChatMessages = new ObservableCollection<MessageModel>(group.Messages.Select(message =>
                     new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent))
                 .ToList());
-            MembersNumber = group.GroupClients.Count;
+            MembersNumber = group.GroupMembers.Count;
             return;
         }
 
