@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace SharedComponents;
+namespace SharedUtilities;
 
 public class ObservableObject : INotifyPropertyChanged
 {

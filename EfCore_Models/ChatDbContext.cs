@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace SharedComponents.EF_Models;
+namespace Ef_Models;
 
 public class ChatDbContext: DbContext
 {

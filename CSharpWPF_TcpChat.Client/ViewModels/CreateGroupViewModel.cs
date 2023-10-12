@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using CSharpWPF_TcpChat.Client.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using SharedComponents;
+using SharedUtilities;
 
 namespace CSharpWPF_TcpChat.Client.ViewModels;
 

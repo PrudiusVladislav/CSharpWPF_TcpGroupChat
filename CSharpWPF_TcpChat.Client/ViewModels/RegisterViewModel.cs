@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using CSharpWPF_TcpChat.Client.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using SharedComponents;
+using SharedUtilities;
 
 namespace CSharpWPF_TcpChat.Client.ViewModels;
 
@@ -46,7 +46,7 @@ public class RegisterViewModel: ObservableObject
         LogInCommand = new RelayCommand((action) =>
         {
             _mainViewModel.LoginVM ??= new LoginViewModel(_mainViewModel);
-            _mainViewModel.CurrentViewModel = _mainViewModel.RegisterVM;
+            _mainViewModel.CurrentViewModel = _mainViewModel.LoginVM;
         }, o => true);
     }
 
@@ -56,22 +56,22 @@ public class RegisterViewModel: ObservableObject
 
         if (Regex.IsMatch(Username, pattern))
         {
-            MessageBox.Show(@"The username must not contain the following symbols: @ $ | \ /",
+            MessageBox.Show(@"The username body must not contain the following symbols: @ $ | \ /",
                 "Wrong register data", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         
         await using var dbContext = _mainViewModel.ChatContextFactory.CreateDbContext();
-        if (await dbContext.Clients.AnyAsync(c => c.Username.Equals(Username)))
+        if (await dbContext.Clients.AnyAsync(c => c.Username.Equals($"@{Username}")))
         {
             MessageBox.Show("Client with such username already exists. Try another one",
                 "Wrong register data", MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
         else
         {
-            _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, new SharedComponents.EF_Models.Client()
+            _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, new Ef_Models.Client()
             {
-                Username = this.Username,
+                Username = $"@{this.Username}",
                 Password = this.Password
             });
         }

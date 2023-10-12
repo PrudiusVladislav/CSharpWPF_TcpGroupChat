@@ -1,4 +1,4 @@
-namespace SharedComponents;
+namespace SharedUtilities;
 
 public class MessageModel
 {

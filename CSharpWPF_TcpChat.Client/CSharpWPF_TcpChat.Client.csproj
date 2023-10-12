@@ -9,7 +9,8 @@
 
 
     <ItemGroup>
-      <ProjectReference Include="..\SharedComponents\SharedComponents.csproj" />
+      <ProjectReference Include="..\EfCore_Models\EfCore_Models.csproj" />
+      <ProjectReference Include="..\SharedUtilities\SharedUtilities.csproj" />
     </ItemGroup>
 
 

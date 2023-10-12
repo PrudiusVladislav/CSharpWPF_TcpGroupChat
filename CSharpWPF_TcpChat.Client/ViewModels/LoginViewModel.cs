@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using CSharpWPF_TcpChat.Client.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using SharedComponents;
+using SharedUtilities;
 
 namespace CSharpWPF_TcpChat.Client.ViewModels;
 
@@ -52,17 +52,17 @@ public class LoginViewModel: ObservableObject
     private async void ExecuteLogInCommand()
     {
         await using var dbContext = _mainViewModel.ChatContextFactory.CreateDbContext();
-        var client = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(Username));
+        var client = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals($"@{Username}"));
         if (client != null && client.Password.Equals(Password))
         {
             _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, client);
+            Username = string.Empty;
+            Password = string.Empty;
         }
         else
             MessageBox.Show("Client with such username does not exist or wrong password has been entered",
                 "Wrong log in data", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-
-        Username = string.Empty;
-        Password = string.Empty;
+        
     }
     
 }

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace SharedComponents.EF_Models;
+namespace Ef_Models;
 
 public class Client
 {

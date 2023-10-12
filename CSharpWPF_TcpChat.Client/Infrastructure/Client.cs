@@ -6,14 +6,14 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using SharedComponents;
+using SharedUtilities;
 
 namespace CSharpWPF_TcpChat.Client.Infrastructure;
 
 public class Client
 {
     private TcpClient client;
-    private SharedComponents.EF_Models.Client? _dbClient;
+    private Ef_Models.Client? _dbClient;
     public bool IsConnected => client.Connected;
 
     public event Action<int>? MessageReceived;
@@ -25,14 +25,14 @@ public class Client
         client = new TcpClient();
     }
 
-    public async Task InitiateClientAsync(SharedComponents.EF_Models.Client dbClient)
+    public async Task InitiateClientAsync(Ef_Models.Client dbClient)
     {
         _dbClient = dbClient;
         await ConnectToServerAsync(_dbClient);
         StartReceivingAsync();
     }
     
-    private async Task ConnectToServerAsync(SharedComponents.EF_Models.Client dbClient)
+    private async Task ConnectToServerAsync(Ef_Models.Client dbClient)
     {
         await client.ConnectAsync(IPAddress.Parse("127.0.0.1"), 5000);
         var stream = client.GetStream();

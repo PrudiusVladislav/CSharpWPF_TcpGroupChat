@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace SharedComponents.EF_Models;
+namespace Ef_Models;
 
 public class ChatDbContextFactory: IDesignTimeDbContextFactory<ChatDbContext>
 {

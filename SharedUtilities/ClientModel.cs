@@ -1,6 +1,6 @@
 using System.Net.Sockets;
 
-namespace SharedComponents;
+namespace SharedUtilities;
 
 public class ClientModel
 {

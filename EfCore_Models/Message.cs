@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SharedComponents.EF_Models;
+namespace Ef_Models;
 
 public class Message
 {

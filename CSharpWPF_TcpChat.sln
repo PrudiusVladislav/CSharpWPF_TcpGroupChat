@@ -4,7 +4,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpWPF_TcpChat.Client", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpConsole_TcpChat.Server", "CSharpConsole_TcpChat.Server\CSharpConsole_TcpChat.Server.csproj", "{F08EBE56-2D60-4ABE-908F-33A127A6891B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedComponents", "SharedComponents\SharedComponents.csproj", "{8E630ECF-BEF1-4276-A743-DD7A2E3E33AA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfCore_Models", "EfCore_Models\EfCore_Models.csproj", "{8E630ECF-BEF1-4276-A743-DD7A2E3E33AA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedUtilities", "SharedUtilities\SharedUtilities.csproj", "{2A0B33FF-0212-4634-AA49-83EE40F85211}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +26,9 @@ Global
 		{8E630ECF-BEF1-4276-A743-DD7A2E3E33AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E630ECF-BEF1-4276-A743-DD7A2E3E33AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E630ECF-BEF1-4276-A743-DD7A2E3E33AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A0B33FF-0212-4634-AA49-83EE40F85211}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A0B33FF-0212-4634-AA49-83EE40F85211}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A0B33FF-0212-4634-AA49-83EE40F85211}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A0B33FF-0212-4634-AA49-83EE40F85211}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

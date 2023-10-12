@@ -6,8 +6,8 @@ using System.Windows;
 using System.Windows.Input;
 using CSharpWPF_TcpChat.Client.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using SharedComponents;
-using SharedComponents.EF_Models;
+using SharedUtilities;
+using Ef_Models;
 
 namespace CSharpWPF_TcpChat.Client.ViewModels;
 
@@ -17,7 +17,7 @@ public class ChatViewModel: ObservableObject
     private string? _selectedChatName;
     private int _membersNumber;
     private volatile bool _windowDialogResult;
-    private SharedComponents.EF_Models.Client _dbClient;
+    private Ef_Models.Client _dbClient;
     private Infrastructure.Client? _client;
     
     public MainViewModel MainVM { get; }
@@ -72,7 +72,7 @@ public class ChatViewModel: ObservableObject
         }
     }
     
-    public ChatViewModel(MainViewModel mainVm, SharedComponents.EF_Models.Client dbClient)
+    public ChatViewModel(MainViewModel mainVm, Ef_Models.Client dbClient)
     { 
         MainVM = mainVm;
         _dbClient = dbClient;

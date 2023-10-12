@@ -1,6 +1,6 @@
 
-using SharedComponents;
-using SharedComponents.EF_Models;
+using SharedUtilities;
+using Ef_Models;
 
 namespace CSharpWPF_TcpChat.Client.ViewModels;
 

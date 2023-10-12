@@ -1,4 +1,4 @@
-namespace SharedComponents.EF_Models;
+namespace Ef_Models;
 
 public abstract class ChatModel
 {

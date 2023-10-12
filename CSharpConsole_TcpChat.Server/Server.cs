@@ -4,8 +4,8 @@ using System.Net.Sockets;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using SharedComponents;
-using SharedComponents.EF_Models;
+using SharedUtilities;
+using Ef_Models;
 
 namespace CSharpConsole_TcpChat.Server;
 
