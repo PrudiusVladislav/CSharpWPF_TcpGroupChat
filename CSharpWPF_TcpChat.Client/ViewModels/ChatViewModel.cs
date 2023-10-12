@@ -16,6 +16,7 @@ public class ChatViewModel: ObservableObject
     private string? _enteredMessage;
     private string? _selectedChatName;
     private int _membersNumber;
+    private volatile bool _windowDialogResult;
     private SharedComponents.EF_Models.Client _dbClient;
     private Infrastructure.Client? _client;
     
@@ -46,6 +47,17 @@ public class ChatViewModel: ObservableObject
             OnPropertyChanged();
         }
     }
+    
+    public bool WindowDialogResult
+    {
+        get => _windowDialogResult;
+        set
+        {
+            _windowDialogResult = value;
+            OnPropertyChanged();
+        }
+    }
+    
     public string? SelectedChatName
     {
         get => _selectedChatName;
@@ -97,6 +109,7 @@ public class ChatViewModel: ObservableObject
     private async void ExecuteDisconnectCommand()
     {
         await _client!.SendMessageAsync(MessageModel.SystemMessageByteOption,MessageModel.ExitMessage);
+        WindowDialogResult = true; // close the app window on disconnect 
     }
     
     private async void ConnectAsync()

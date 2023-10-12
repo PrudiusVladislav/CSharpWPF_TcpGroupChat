@@ -5,6 +5,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:CSharpWPF_TcpChat.Client.Views"
              xmlns:viewModels="clr-namespace:CSharpWPF_TcpChat.Client.ViewModels"
+             xmlns:infrastructure="clr-namespace:CSharpWPF_TcpChat.Client.Infrastructure"
+             infrastructure:DialogCloser.DialogResult="{Binding WindowDialogResult}"
              mc:Ignorable="d"
              d:DesignHeight="500" d:DesignWidth="800">
     <Grid>

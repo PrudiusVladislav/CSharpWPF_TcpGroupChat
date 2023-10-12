@@ -68,8 +68,6 @@ public class Client
                                 OnNewUserAdded(userId);
                             break;
                         }
-                            
-                        
                     }
                 }
                 else 
