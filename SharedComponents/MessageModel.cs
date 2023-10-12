@@ -17,6 +17,10 @@ public class MessageModel
     public const string GroupRemoved = "REMOVED_GROUP";
     public const string GroupAddedMessage = "ADDED_GROUP";
     public const string AddPersonalChatRequestMessage = "PERSONAL_CHAT_ADD";
+    public const string PersonalChatMessageType = "PERSONAL_CHAT_MESSAGE";
+    public const string GroupChatMessage = "GROUP_CHAT_MESSAGE";
+    //public const string IsClientOnlineRequest = "CLIENT_ONLINE_REQUEST";
+    //public const string IsClientOnlineResponse = "CLIENT_ONLINE_RESPONSE";
     public const string MessageSeparator = " | ";
     
     public string SenderUserName { get; set; }

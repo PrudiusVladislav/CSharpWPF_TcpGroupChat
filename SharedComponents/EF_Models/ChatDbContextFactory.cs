@@ -14,7 +14,6 @@ public class ChatDbContextFactory: IDesignTimeDbContextFactory<ChatDbContext>
             .Build();
 
         var options = new DbContextOptionsBuilder<ChatDbContext>()
-            .UseLazyLoadingProxies()
             .UseSqlServer(config.GetConnectionString("SqlClient"))
             .Options;
         return new ChatDbContext(options);

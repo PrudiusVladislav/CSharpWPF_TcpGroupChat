@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using CSharpWPF_TcpChat.Client.Infrastructure;
@@ -51,6 +52,15 @@ public class RegisterViewModel: ObservableObject
 
     private async void ExecuteRegisterCommand()
     {
+        const string pattern = @"[@$|\\/]"; // forbidden symbols for username
+
+        if (Regex.IsMatch(Username, pattern))
+        {
+            MessageBox.Show(@"The username must not contain the following symbols: @ $ | \ /",
+                "Wrong register data", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        
         await using var dbContext = _mainViewModel.ChatContextFactory.CreateDbContext();
         if (await dbContext.Clients.AnyAsync(c => c.Username.Equals(Username)))
         {

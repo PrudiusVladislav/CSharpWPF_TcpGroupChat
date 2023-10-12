@@ -3,7 +3,7 @@ namespace SharedComponents.EF_Models;
 public class Group : ChatModel
 {
     public int Id { get; set; }
-    public string GroupName { get; set; } = null!;
+    public required string GroupName { get; set; } 
 
     public virtual ICollection<ClientsGroups> GroupClients { get; set; } = new List<ClientsGroups>();
 }

@@ -13,7 +13,7 @@ namespace CSharpWPF_TcpChat.Client.Infrastructure;
 public class Client
 {
     private TcpClient client;
-    private SharedComponents.EF_Models.Client _dbClient;
+    private SharedComponents.EF_Models.Client? _dbClient;
     public bool IsConnected => client.Connected;
 
     public event Action<int>? MessageReceived;
@@ -47,7 +47,7 @@ public class Client
             {
                 var stream = client.GetStream();
                 var buffer = new byte[1024];
-                var messageOption = await Task.Run(stream.ReadByte);
+                var messageOption = stream.ReadByte();
                 var receivedBytes = await stream.ReadAsync(buffer);
                 var receivedMessage = Encoding.UTF8.GetString(buffer, 0,receivedBytes);
                 
@@ -64,7 +64,7 @@ public class Client
                         case MessageModel.NewUserAddedMessage:
                         {
                             var userId = int.Parse(parameters);
-                            if(!_dbClient.Id.Equals(userId))
+                            if(!_dbClient!.Id.Equals(userId))
                                 OnNewUserAdded(userId);
                             break;
                         }

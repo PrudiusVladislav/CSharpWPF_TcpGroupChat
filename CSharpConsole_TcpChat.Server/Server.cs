@@ -1,18 +1,21 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SharedComponents;
+using SharedComponents.EF_Models;
 
 namespace CSharpConsole_TcpChat.Server;
 
 public class Server
 {
-    private readonly Dictionary<string, ClientModel> _clients = new Dictionary<string, ClientModel>();
-    private readonly List<string> _messages = new List<string>();
+    private readonly Dictionary<string, ClientModel> _onlineClients = new Dictionary<string, ClientModel>();
     private readonly TcpListener listener;
+    private ChatDbContextFactory _dbContextFactory;
     public Server()
     {
+        _dbContextFactory = new ChatDbContextFactory();
         listener = new TcpListener(IPAddress.Parse("127.0.0.1"), 5000);
         listener.Start();
         Console.WriteLine($"[{DateTime.Now}] SERVER started");
@@ -28,17 +31,29 @@ public class Server
                 var stream = client.GetStream();
                 var buffer = new byte[1024];
                 var receivedBytes = await stream.ReadAsync(buffer);
-                var receivedUsername = Encoding.UTF8.GetString(buffer, 0,receivedBytes);
-                var acceptedUser = new ClientModel(client, receivedUsername);
+                var receivedMessage = Encoding.UTF8.GetString(buffer, 0,receivedBytes);
+                var userName =
+                    receivedMessage[..receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal)];
+
+                bool isClientNew = false;
+                await using var dbContext = _dbContextFactory.CreateDbContext();
+                var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
+                if (dbClientToConnect == null)
+                {
+                    var password =
+                        receivedMessage[
+                            (receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)..];
+                    await dbContext.Clients.AddAsync(new Client() { Username = userName, Password = password });
+                    await dbContext.SaveChangesAsync();
+                    dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
+                    isClientNew = true;
+                }
                 
-                var clientsJson = JsonConvert.SerializeObject(_clients.Keys.ToList());
-                var messagesJson = JsonConvert.SerializeObject(_messages);
-                var combinedJson = clientsJson + "||" + messagesJson;
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(combinedJson));
-                
-                _clients.Add(acceptedUser.UserName, acceptedUser);
+                var acceptedUser = new ClientModel(client, userName, dbClientToConnect!.Id);
+                _onlineClients.Add(acceptedUser.UserName, acceptedUser);
                 Console.WriteLine($"[{DateTime.Now}] user with username {acceptedUser.UserName} has connected");
-                BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, $"{MessageModel.NewUserAddedMessage} {acceptedUser.UserName}");
+                if(isClientNew)
+                    BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, $"{MessageModel.NewUserAddedMessage}{MessageModel.MessageSeparator}{acceptedUser.DbClientId}");
                 HandleOneUserAsync(acceptedUser);
             }
         }
@@ -46,7 +61,6 @@ public class Server
         {
             Console.WriteLine($"[{DateTime.Now}] Error occurred while handling clients: {ex.Message}");
             var messageModel = new MessageModel("SERVER", DateTime.Now, ex.Message);
-            _messages.Add(messageModel.ToString());
             await BroadCastMessageAsync(MessageModel.CommonMessageByteOption, messageModel);
         }
         finally
@@ -71,12 +85,46 @@ public class Server
                 {
                     break;
                 }
+                var messageCommand =
+                    receivedMessage[..receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal)];
+                switch (messageCommand)
+                {
+                    case MessageModel.AddGroupRequestMessage:
+                    {
+                        if (bytesOption == MessageModel.SystemMessageByteOption)
+                        {
+                            var groupName = receivedMessage[(receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)
+                                ..(receivedMessage.LastIndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal))];
+                            var clientCreatorId = receivedMessage[(receivedMessage.LastIndexOf(MessageModel.MessageSeparator,
+                                        StringComparison.Ordinal) + 1)..];
+                            
+                            var newGroup = new Group() { GroupName = groupName };
+                            await using (var dbContext = _dbContextFactory.CreateDbContext())
+                            {
+                                var clientCreator = await dbContext.Clients.FindAsync(clientCreatorId);
+                                if (clientCreator != null)
+                                {
+                                    var clientsGroup = new ClientsGroups
+                                    {
+                                        Client = clientCreator,
+                                        Group = newGroup,
+                                    };
+                                    await dbContext.ClientsGroups.AddAsync(clientsGroup);
+                                }
+                                await dbContext.Groups.AddAsync(newGroup);
+                            }
+                        }
+                        break;
+                    }
+                }
                 
-                ////////////////////////handle add requests with parameters (names) here
                 
                 Console.WriteLine($"[{DateTime.Now}] user with username {user.UserName} has sent message: {receivedMessage}");
-                var messageModel = new MessageModel(user.UserName, DateTime.Now, receivedMessage);
-                _messages.Add(messageModel.ToString());
+                var messageModel = new MessageModel(user.UserName, , receivedMessage);
+                var messageToBroadcast = new Message() { TimeOfSending = DateTime.Now, SenderClientId = user.DbClientId,
+                    MessageContent = receivedMessage, ChatModelId = }; 
+                await using var context = _dbContextFactory.CreateDbContext();
+                await context.Messages.AddAsync(messageToBroadcast);
                 BroadCastMessageAsync(MessageModel.CommonMessageByteOption,messageModel);
             }
         }
@@ -90,9 +138,8 @@ public class Server
             var stream = user.Client.GetStream();
             stream.WriteByte(MessageModel.SystemMessageByteOption);
             await stream.WriteAsync(Encoding.UTF8.GetBytes(MessageModel.ExitMessageResponse));
-            _clients.Remove(user.UserName);
+            _onlineClients.Remove(user.UserName);
             user.Client.Close();
-            BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, $"{MessageModel.UserRemovedMessage} {user.UserName}");
             Console.WriteLine($"[{DateTime.Now}] user with username {user.UserName} has disconnected");
         }
     }
@@ -101,7 +148,7 @@ public class Server
     private async Task BroadCastMessageAsync(byte messageType, MessageModel message)
     {
         var tasks = new List<Task>();
-        foreach (var user in _clients.Values)
+        foreach (var user in _onlineClients.Values)
         {
             tasks.Add(Task.Run(async () =>
             {
@@ -116,7 +163,7 @@ public class Server
     private async Task BroadCastTextMessageAsync(byte messageType, string textMessage)
     {
         var tasks = new List<Task>();
-        foreach (var user in _clients.Values)
+        foreach (var user in _onlineClients.Values)
         {
             tasks.Add(Task.Run(async () =>
             {

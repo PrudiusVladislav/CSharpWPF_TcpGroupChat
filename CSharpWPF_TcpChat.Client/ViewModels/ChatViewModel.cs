@@ -13,68 +13,49 @@ namespace CSharpWPF_TcpChat.Client.ViewModels;
 
 public class ChatViewModel: ObservableObject
 {
-    private string? username;
-    private string? enteredMessage;
-    private ChatModel? _selectedChat;
-    private SharedComponents.EF_Models.Client? _selectedClient;
+    private string? _enteredMessage;
+    private string? _selectedChatName;
+    private int _membersNumber;
     private SharedComponents.EF_Models.Client _dbClient;
     private Infrastructure.Client? _client;
+    
     public MainViewModel MainVM { get; }
-        
-    public ObservableCollection<PersonalChat> PersonalChats { get; set; }
-    public ObservableCollection<Group> GroupChats { get; set; }
-    public ObservableCollection<SharedComponents.EF_Models.Client> Clients { get; set; }
-    public ObservableCollection<Message> ChatMessages;
+    public ObservableCollection<string> ChatNames { get; set; }
+    public ObservableCollection<MessageModel> ChatMessages { get; set; }
+    
     public ICommand SendCommand { get; }
     public ICommand DisconnectCommand { get; }
     public ICommand CreateGroupCommand { get; }
-    
-    
-    public string? UserName
+
+    public int MembersNumber
     {
-        get => username;
+        get => _membersNumber;
         set
         {
-            username = value;
+            _membersNumber = value;
             OnPropertyChanged();
         }
     }
+    
     public string? EnteredMessage
     {
-        get => enteredMessage;
+        get => _enteredMessage;
         set
         {
-            enteredMessage = value;
+            _enteredMessage = value;
             OnPropertyChanged();
         }
     }
-    public ChatModel? SelectedChat
+    public string? SelectedChatName
     {
-        get => _selectedChat;
+        get => _selectedChatName;
         set
         {
-            if (value != null && _selectedChat != value)
+            if (value != null && _selectedChatName != value)
             {
-                _selectedChat = value;
+                _selectedChatName = value;
                 OnPropertyChanged();
-                ChatMessages = new ObservableCollection<Message>(_selectedChat.Messages);
-                SelectedClient = null;
-            }
-        }
-    }
-
-    public SharedComponents.EF_Models.Client? SelectedClient
-    {
-        get => _selectedClient;
-        set
-        {
-            if (value != null && _selectedClient != value)
-            {
-                _selectedClient = value;
-                OnPropertyChanged();
-                using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
-                if(dbContext.PersonalChats.Any(c => c.FirstClient.Username.Equals(UserName) && c.SecondClient.Username.Equals(_selectedClient.Username)))
-                    SelectedChat = null;
+                SelectedChatNameChanged();
             }
         }
     }
@@ -85,6 +66,7 @@ public class ChatViewModel: ObservableObject
         _dbClient = dbClient;
         ConnectAsync();
         LoadChats();
+        ChatMessages = new ObservableCollection<MessageModel>();
         
         SendCommand = new RelayCommand((command) =>
             {
@@ -104,8 +86,11 @@ public class ChatViewModel: ObservableObject
         CreateGroupCommand = new RelayCommand((action) =>
         {
             var createGroupWindow = new CreateGroupWindow();
-            (createGroupWindow.DataContext as CreateGroupViewModel).ChatVM = this;
-            createGroupWindow.ShowDialog();
+            if (createGroupWindow.DataContext is CreateGroupViewModel createGroupViewModel)
+            {
+                createGroupViewModel.ChatVM = this;
+                createGroupWindow.ShowDialog();
+            }
         }, o => true);
     }
 
@@ -116,7 +101,7 @@ public class ChatViewModel: ObservableObject
     
     private async void ConnectAsync()
     {
-        _client = new Infrastructure.Client(UserName);
+        _client = new Infrastructure.Client(_dbClient.Username);
         _client.MessageReceived += HandleMessageReceived;
         _client.EventOccurred += HandleEventOccurred;
         _client.NewUserAdded += HandleClientAdded;
@@ -127,10 +112,9 @@ public class ChatViewModel: ObservableObject
     private async void LoadChats()
     {
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
-        var groupsTask = dbContext.Groups.ToListAsync();
-        var personalChatsTask = dbContext.PersonalChats.ToListAsync();
-        GroupChats = new ObservableCollection<Group>(await groupsTask);
-        PersonalChats = new ObservableCollection<PersonalChat>(await personalChatsTask);
+        var resultChatNames = await dbContext.Groups.Select(g => g.GroupName).ToListAsync();
+        resultChatNames.AddRange(await dbContext.Clients.Select(c => c.Username).ToListAsync());
+        ChatNames = new ObservableCollection<string>(resultChatNames);
     }
     
     private async void ExecuteSendMessageCommand()
@@ -139,20 +123,46 @@ public class ChatViewModel: ObservableObject
         EnteredMessage = string.Empty;
     }
     
-    private void HandleMessageReceived(int messageId)
+    private async void HandleMessageReceived(int messageId)
     {
-        using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
-        var message = dbContext.Messages.Find(messageId);
-        if (message != null)
-            ChatMessages.Add(message);
+        await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
+        var message = await dbContext.Messages.Include(m => m.SenderClient).FirstOrDefaultAsync(m => m.Id == messageId);
+        //checking if the group/personal chat the message came from is the selected one right now, if so, add the message to the ChatMessages,
+        //otherwise do nothing, since it will be downloaded with other messages the next time the chat is selected
+        switch (message)
+        {
+            case { ChatModel: Group group }:
+            {
+                var messageOriginGroup = await dbContext.Groups.FirstOrDefaultAsync(g => g.Id == group.Id);
+                if (messageOriginGroup != null && messageOriginGroup.GroupName == SelectedChatName)
+                {
+                    ChatMessages.Add(new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent));
+                }
+
+                break;
+            }
+            case { ChatModel: PersonalChat personalChat }:
+            {
+                var messageOriginPersonalChat = await dbContext.PersonalChats
+                    .Include(pc => pc.FirstClient).Include(pc => pc.SecondClient).FirstOrDefaultAsync(c => c.Id == personalChat.Id);
+                if (messageOriginPersonalChat != null &&
+                    (messageOriginPersonalChat.FirstClient.Username == SelectedChatName ||
+                     messageOriginPersonalChat.SecondClient.Username == SelectedChatName))
+                {
+                    ChatMessages.Add(new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent));
+                }
+                
+                break;
+            }
+        }
     }
     
-    private void HandleClientAdded(int clientId)
+    private async void HandleClientAdded(int clientId)
     {
-        using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
-        var clientToAdd = dbContext.Clients.Find(clientId);
+        await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
+        var clientToAdd = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
         if(clientToAdd != null)
-            Clients.Add(clientToAdd);
+            ChatNames.Add(clientToAdd.Username);
     }
     
     private void HandleEventOccurred(string eventMessage)
@@ -163,6 +173,45 @@ public class ChatViewModel: ObservableObject
     public async Task AddGroupAsync(string groupName)
     {
         await _client!.SendMessageAsync(MessageModel.SystemMessageByteOption,
-            $"{MessageModel.AddGroupRequestMessage}{MessageModel.MessageSeparator}{groupName}{_dbClient.Username}");
+            $"{MessageModel.AddGroupRequestMessage}{MessageModel.MessageSeparator}{groupName}{_dbClient.Id}");
+    }
+
+    private async void SelectedChatNameChanged()
+    {
+        await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
+        if (SelectedChatName![0] == '@')//that means that the selected name is name of a client
+        {
+            MembersNumber = 1;
+            var personalChat = await dbContext.PersonalChats.Include(personalChat => personalChat.Messages)
+                .ThenInclude(message => message.SenderClient)
+                .FirstOrDefaultAsync(chat =>
+                    (chat.FirstClient.Username == SelectedChatName && chat.SecondClient.Username == _dbClient.Username) ||
+                    (chat.FirstClient.Username == _dbClient.Username && chat.SecondClient.Username == SelectedChatName));
+            if (personalChat != null)
+            {
+                ChatMessages = new ObservableCollection<MessageModel>(personalChat.Messages.Select(message =>
+                        new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent))
+                    .ToList());
+                return;
+            }
+
+            ChatMessages = new ObservableCollection<MessageModel>();
+            return;
+        }
+
+        //this executes if the selected chat name is name of a group
+        var group = await dbContext.Groups.Include(g => g.Messages)
+            .ThenInclude(message => message.SenderClient).Include(group => group.GroupClients).FirstOrDefaultAsync(g => g.GroupName == SelectedChatName);
+        if (group != null)
+        {
+            ChatMessages = new ObservableCollection<MessageModel>(group.Messages.Select(message =>
+                    new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent))
+                .ToList());
+            MembersNumber = group.GroupClients.Count;
+            return;
+        }
+
+        MembersNumber = 0;
+        ChatMessages = new ObservableCollection<MessageModel>();
     }
 }

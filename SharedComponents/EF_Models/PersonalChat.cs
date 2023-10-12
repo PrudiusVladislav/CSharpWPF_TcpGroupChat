@@ -8,9 +8,8 @@ public class PersonalChat : ChatModel
     public int FirstClientId { get; set; } 
     public int SecondClientId { get; set; } 
     
-    [ForeignKey("FirstClientId")]
+    //[ForeignKey("FirstClientId")]
     public virtual Client FirstClient { get; set; }
-    
-    [ForeignKey("SecondClientId")]
+    //[ForeignKey("SecondClientId")]
     public virtual Client SecondClient { get; set; }
 }
