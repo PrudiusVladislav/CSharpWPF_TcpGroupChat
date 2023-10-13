@@ -80,7 +80,7 @@ public class Server
             {
                 var stream = user.Client.GetStream();
                 var buffer = new byte[1024];
-                var bytesOption = await Task.Run(stream.ReadByte);
+                var bytesOption = stream.ReadByte();
                 var receivedBytes = await stream.ReadAsync(buffer);
                 var receivedMessage = Encoding.UTF8.GetString(buffer, 0,receivedBytes);
                 if (bytesOption == MessageModel.SystemMessageByteOption && receivedMessage.Equals(MessageModel.ExitMessage))

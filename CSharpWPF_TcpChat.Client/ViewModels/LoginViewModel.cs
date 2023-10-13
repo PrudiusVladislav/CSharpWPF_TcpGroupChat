@@ -56,8 +56,8 @@ public class LoginViewModel: ObservableObject
         if (client != null && client.Password.Equals(Password))
         {
             _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, client);
-            Username = string.Empty;
-            Password = string.Empty;
+            //Username = string.Empty;
+            //Password = string.Empty;
         }
         else
             MessageBox.Show("Client with such username does not exist or wrong password has been entered",

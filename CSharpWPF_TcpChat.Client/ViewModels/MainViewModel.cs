@@ -12,7 +12,7 @@ public class MainViewModel: ObservableObject
     public ChatViewModel? ChatVM { get; set; }
     public ChatDbContextFactory ChatContextFactory { get;}
     
-    private ObservableObject? _currentViewModel;
+    private volatile ObservableObject? _currentViewModel;
     public ObservableObject? CurrentViewModel
     {
         get => _currentViewModel;

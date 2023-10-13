@@ -30,5 +30,17 @@ public class ChatDbContext: DbContext
             .HasIndex(g => g.GroupName)
             .IsUnique();
         
+        modelBuilder.Entity<PersonalChat>()
+            .HasOne(c => c.FirstClient)
+            .WithMany()
+            .HasForeignKey(c => c.FirstClientId)
+            .OnDelete(DeleteBehavior.ClientSetNull);
+
+        modelBuilder.Entity<PersonalChat>()
+            .HasOne(c => c.SecondClient)
+            .WithMany()
+            .HasForeignKey(c => c.SecondClientId)
+            .OnDelete(DeleteBehavior.ClientSetNull);
+        
     }
 }

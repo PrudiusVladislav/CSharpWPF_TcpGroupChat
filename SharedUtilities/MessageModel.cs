@@ -21,7 +21,7 @@ public class MessageModel
     public const string GroupChatMessage = "GROUP_CHAT_MESSAGE";
     //public const string IsClientOnlineRequest = "CLIENT_ONLINE_REQUEST";
     //public const string IsClientOnlineResponse = "CLIENT_ONLINE_RESPONSE";
-    public const string MessageSeparator = " | ";
+    public const string MessageSeparator = "|";
     
     public string SenderUserName { get; set; }
     public DateTime SendingTime { get; set; }
