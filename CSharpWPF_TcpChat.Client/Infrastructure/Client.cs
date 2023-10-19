@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Windows;
 using Newtonsoft.Json;
 using SharedUtilities;
 
@@ -32,7 +33,7 @@ public class Client
             _dbClient = dbClient;
             await ConnectToServerAsync(_dbClient);
             Console.WriteLine("InitiateClientAsync after ConnectToServerAsync before StartReceivingAsync");
-            var receivingTask = StartReceivingAsync();
+            Task.Run(async() => await StartReceivingAsync());
             Console.WriteLine("InitiateClientAsync after StartReceivingAsync  ");
         });
     }
@@ -74,6 +75,7 @@ public class Client
                         case MessageModel.NewUserAddedMessage:
                         {
                             var userId = int.Parse(parameters);
+                            Console.WriteLine($"added user id = {userId}");
                             if(!_dbClient!.Id.Equals(userId))
                                 OnNewUserAdded(userId);
                             break;
@@ -87,6 +89,7 @@ public class Client
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"StartReceivingAsync error: {ex}");
             OnEventOccurred(ex.Message);
         }
         finally

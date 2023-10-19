@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using SharedUtilities;
 using Ef_Models;
 
@@ -41,12 +40,15 @@ public class Server
                 var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
                 if (dbClientToConnect == null)
                 {
+                    Console.WriteLine("dbClientToConnect == null enter");
                     var password =
                         receivedMessage[
                             (receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)..];
                     await dbContext.Clients.AddAsync(new Client() { Username = userName, Password = password });
                     await dbContext.SaveChangesAsync();
+                    Console.WriteLine("after adding dbClientToConnect");
                     dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
+                    Console.WriteLine($"after adding check {dbClientToConnect == null}");
                     isClientNew = true;
                 }
 
@@ -59,12 +61,17 @@ public class Server
                 {
                     acceptedUser = new ClientModel(client, userName, dbClientToConnect!.Id);
                     _onlineClients.Add(acceptedUser.UserName, acceptedUser);
+                    Console.WriteLine("after adding the client to the online clients");
                 }
                 
                 Console.WriteLine($"[{DateTime.Now}] user with username {acceptedUser.UserName} has connected");
-                if(isClientNew)
+                if (isClientNew)
+                {
+                    Console.WriteLine("right before broadcasting new client id");
                     BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, await dbContext.Clients.ToListAsync(),
                         $"{MessageModel.NewUserAddedMessage}{MessageModel.MessageSeparator}{acceptedUser.DbClientId}");
+                }
+                    
                 HandleOneUserAsync(acceptedUser);
             }
         }
@@ -142,7 +149,9 @@ public class Server
                     var receiverClient = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username == messageCommand);
                     if (receiverClient != null)
                     {
-                        var personalChat = await dbContext.PersonalChats.FirstOrDefaultAsync(pc =>
+                        var personalChat = await dbContext.PersonalChats
+                            .Include(personalChat => personalChat.FirstClient)
+                            .Include(personalChat => personalChat.SecondClient).FirstOrDefaultAsync(pc =>
                             (pc.FirstClient.Id == receiverClient.Id && pc.SecondClientId == user.DbClientId) ||
                             (pc.SecondClient.Id == receiverClient.Id && pc.FirstClientId == user.DbClientId));
                         
@@ -160,7 +169,8 @@ public class Server
                         }
 
                         messageOriginChatModel = personalChat;        
-                        clientsToReceiveMessage.Add(receiverClient);
+                        clientsToReceiveMessage.Add(personalChat.FirstClient);
+                        clientsToReceiveMessage.Add(personalChat.SecondClient);
                     }
                 }
                 //means that the receiver is a group
@@ -189,7 +199,7 @@ public class Server
                 if (messageOriginChatModel != null)
                 {
                     var dbMessage = new Message() { TimeOfSending = DateTime.Now, SenderClientId = user.DbClientId,
-                        MessageContent = receivedMessage, ChatModel = messageOriginChatModel}; 
+                        MessageContent = receivedMessageContent, ChatModel = messageOriginChatModel}; 
                     await dbContext.Messages.AddAsync(dbMessage);
                     await dbContext.SaveChangesAsync();
                     BroadCastTextMessageAsync(MessageModel.CommonMessageByteOption, clientsToReceiveMessage,  $"{dbMessage.Id}");

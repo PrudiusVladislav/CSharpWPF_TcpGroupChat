@@ -55,7 +55,8 @@
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        FontSize="21"></Label>
                 <ListBox Grid.Row="1" ItemsSource="{Binding ChatNames, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="20" HorizontalContentAlignment="Center">
+                         FontSize="20" HorizontalContentAlignment="Center"
+                         SelectedItem="{Binding SelectedChatName}">
                 </ListBox>
             </Grid>
             <Grid Grid.Column="1">

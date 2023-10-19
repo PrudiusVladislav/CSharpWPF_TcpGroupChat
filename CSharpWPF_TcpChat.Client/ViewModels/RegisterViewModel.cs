@@ -69,14 +69,20 @@ public class RegisterViewModel: ObservableObject
         }
         else
         {
-            // Application.Current.Dispatcher.Invoke(() =>
-            // {
-            //     _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, new Ef_Models.Client()
-            //     {
-            //         Username = $"@{this.Username}",
-            //         Password = this.Password
-            //     });
-            // });
+            ChatViewModel chatViewModel = null;
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                chatViewModel = new ChatViewModel();
+                _mainViewModel.CurrentViewModel = chatViewModel;
+            });
+            if (chatViewModel != null)
+            {
+                await chatViewModel.StartChat(_mainViewModel, new Ef_Models.Client()
+                {
+                    Username = $"@{this.Username}",
+                    Password = this.Password
+                });
+            }
         }
     }
 }

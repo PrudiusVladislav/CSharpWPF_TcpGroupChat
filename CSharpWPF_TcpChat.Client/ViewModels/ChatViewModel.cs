@@ -23,8 +23,8 @@ public class ChatViewModel: ObservableObject
     private Infrastructure.Client? _client;
     
     public MainViewModel MainVM { get; private set; }
-    public ObservableCollection<string> ChatNames { get; set; }
-    public ObservableCollection<MessageModel> ChatMessages { get; set; }
+    public ObservableCollection<string> ChatNames { get; set; } = new ObservableCollection<string>();
+    public ObservableCollection<MessageModel> ChatMessages { get; set; } = new ObservableCollection<MessageModel>();
     
     public ICommand SendCommand { get; }
     public ICommand DisconnectCommand { get; }
@@ -112,8 +112,6 @@ public class ChatViewModel: ObservableObject
         Console.WriteLine("StartChat after await ConnectAsync ");
         await LoadChats();
         Console.WriteLine("StartChat after await LoadChats(); ");
-        ChatMessages = new ObservableCollection<MessageModel>();
-        Console.WriteLine("StartChat after ChatMessages = new ObservableCollection<MessageModel>(); ");
     }
     
     private async void ExecuteDisconnectCommand()
@@ -138,10 +136,13 @@ public class ChatViewModel: ObservableObject
         Console.WriteLine("ChatVM.LoadChats enter");
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
         var resultChatNames = await dbContext.Groups.Select(g => g.GroupName).ToListAsync();
-        resultChatNames.AddRange(await dbContext.Clients.Select(c => c.Username).ToListAsync());
+        resultChatNames.AddRange(await dbContext.Clients.Where(c => c.Id != _dbClient.Id).Select(c => c.Username).ToListAsync());
         Application.Current.Dispatcher.Invoke(() =>
         {
-            ChatNames = new ObservableCollection<string>(resultChatNames);
+            foreach (var name in resultChatNames)
+            {
+                ChatNames.Add(name);
+            }
         });
         Console.WriteLine($"ChatVM.LoadChats end ChatNames Length: {ChatNames.Count}");
     }
@@ -157,8 +158,9 @@ public class ChatViewModel: ObservableObject
     
     private async void HandleMessageReceived(int messageId)
     {
+        Console.WriteLine($"Handle message received entered; message id = {messageId} (_dbclientId = {_dbClient.Id})");
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
-        var message = await dbContext.Messages.Include(m => m.SenderClient).FirstOrDefaultAsync(m => m.Id == messageId);
+        var message = await dbContext.Messages.Include(m => m.SenderClient).Include(message => message.ChatModel).FirstOrDefaultAsync(m => m.Id == messageId);
         //checking if the group/personal chat the message came from is the selected one right now, if so, add the message to the ChatMessages,
         //otherwise do nothing, since it will be downloaded with other messages the next time the chat is selected
         switch (message)
@@ -168,20 +170,29 @@ public class ChatViewModel: ObservableObject
                 var messageOriginGroup = await dbContext.Groups.FirstOrDefaultAsync(g => g.Id == group.Id);
                 if (messageOriginGroup != null && messageOriginGroup.GroupName == SelectedChatName)
                 {
-                    ChatMessages.Add(new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent));
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        ChatMessages.Add(new MessageModel(message.SenderClient.Username, message.TimeOfSending,
+                            message.MessageContent));
+                    });
                 }
 
                 break;
             }
             case { ChatModel: PersonalChat personalChat }:
             {
+                Console.WriteLine("received message handler:  case { ChatModel: PersonalChat personalChat }: enter");
                 var messageOriginPersonalChat = await dbContext.PersonalChats
                     .Include(pc => pc.FirstClient).Include(pc => pc.SecondClient).FirstOrDefaultAsync(c => c.Id == personalChat.Id);
                 if (messageOriginPersonalChat != null &&
                     (messageOriginPersonalChat.FirstClient.Username == SelectedChatName ||
                      messageOriginPersonalChat.SecondClient.Username == SelectedChatName))
                 {
-                    ChatMessages.Add(new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent));
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        ChatMessages.Add(new MessageModel(message.SenderClient.Username, message.TimeOfSending,
+                            message.MessageContent));
+                    });
                 }
                 
                 break;
@@ -194,10 +205,13 @@ public class ChatViewModel: ObservableObject
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
         var clientToAdd = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
         if (clientToAdd != null)
+        {
+            Console.WriteLine("adding the client to ui");
             Application.Current.Dispatcher.Invoke(() =>
             {
                 ChatNames.Add(clientToAdd.Username);
             });
+        }
     }
     
     private void HandleEventOccurred(string eventMessage)
@@ -226,22 +240,18 @@ public class ChatViewModel: ObservableObject
                 .FirstOrDefaultAsync(chat =>
                     (chat.FirstClient.Username == SelectedChatName && chat.SecondClient.Username == _dbClient.Username) ||
                     (chat.FirstClient.Username == _dbClient.Username && chat.SecondClient.Username == SelectedChatName));
+            ChatMessages.Clear();
             if (personalChat != null)
             {
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    ChatMessages = new ObservableCollection<MessageModel>(personalChat.Messages.Select(message =>
-                            new MessageModel(message.SenderClient.Username, message.TimeOfSending,
-                                message.MessageContent))
-                        .ToList());
+                    foreach (var message in personalChat.Messages.Select(message =>
+                            new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent)).ToList())
+                    {
+                        ChatMessages.Add(message);
+                    }
                 });
-                return;
             }
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                ChatMessages = new ObservableCollection<MessageModel>();
-            });
             return;
         }
 
@@ -250,11 +260,16 @@ public class ChatViewModel: ObservableObject
             .ThenInclude(message => message.SenderClient).Include(group => group.GroupMembers).FirstOrDefaultAsync(g => g.GroupName == SelectedChatName);
         if (group != null)
         {
+            ChatMessages.Clear();
             Application.Current.Dispatcher.Invoke(() =>
             {
-                ChatMessages = new ObservableCollection<MessageModel>(group.Messages.Select(message =>
-                                    new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent))
-                                .ToList());
+                foreach (var message in group.Messages.Select(message =>
+                                 new MessageModel(message.SenderClient.Username, message.TimeOfSending,
+                                     message.MessageContent))
+                             .ToList())
+                {
+                    ChatMessages.Add(message);
+                }
                 MembersNumber = group.GroupMembers.Count;
             });
             return;
@@ -263,7 +278,7 @@ public class ChatViewModel: ObservableObject
         Application.Current.Dispatcher.Invoke(() =>
         {
             MembersNumber = 0;
-            ChatMessages = new ObservableCollection<MessageModel>();
+            ChatMessages.Clear();
         });
     }
 }

@@ -57,12 +57,6 @@ public class LoginViewModel: ObservableObject
         var client = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals($"@{Username}"));
         if (client != null && client.Password.Equals(Password))
         {
-            
-            // Console.WriteLine("Current viewmodel properties");
-            // foreach (var propertyInfo in _mainViewModel.CurrentViewModel!.GetType().GetProperties())
-            // {
-            //     Console.WriteLine(propertyInfo.Name);
-            // }
             ChatViewModel chatViewModel = null;
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -71,21 +65,8 @@ public class LoginViewModel: ObservableObject
             });
             if (chatViewModel != null)
             {
-                Console.WriteLine("started delaying");
-                await Task.Delay(1000);
                 await chatViewModel.StartChat(_mainViewModel, client);
             }
-            
-                
-            
-            //_mainViewModel.CurrentViewModel = new TestViewModel();
-            
-            // Console.WriteLine("Current viewmodel properties after change");
-            // foreach (var propertyInfo in _mainViewModel.CurrentViewModel.GetType().GetProperties())
-            // {
-            //     Console.WriteLine(propertyInfo.Name);
-            // }
-            
         }
         else
             MessageBox.Show("Client with such username does not exist or wrong password has been entered",
