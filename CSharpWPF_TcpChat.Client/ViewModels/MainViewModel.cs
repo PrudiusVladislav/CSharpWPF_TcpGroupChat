@@ -1,4 +1,5 @@
 
+using System;
 using SharedUtilities;
 using Ef_Models;
 
@@ -19,6 +20,7 @@ public class MainViewModel: ObservableObject
         set
         {
             _currentViewModel = value;
+            Console.WriteLine("Current view model changed");
             OnPropertyChanged();
         }
     }

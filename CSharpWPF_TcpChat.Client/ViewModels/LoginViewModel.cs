@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using CSharpWPF_TcpChat.Client.Infrastructure;
@@ -8,13 +10,13 @@ namespace CSharpWPF_TcpChat.Client.ViewModels;
 
 public class LoginViewModel: ObservableObject
 {
-    private MainViewModel _mainViewModel;
+    private readonly MainViewModel _mainViewModel;
     private string _username;
     private string _password;
-
     public ICommand LogInCommand { get; }
     public ICommand RegisterCommand { get; }
     
+    public bool TestProperty { get; set; }
     public string Username
     {
         get => _username;
@@ -55,9 +57,35 @@ public class LoginViewModel: ObservableObject
         var client = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals($"@{Username}"));
         if (client != null && client.Password.Equals(Password))
         {
-            _mainViewModel.CurrentViewModel = new ChatViewModel(_mainViewModel, client);
-            //Username = string.Empty;
-            //Password = string.Empty;
+            
+            // Console.WriteLine("Current viewmodel properties");
+            // foreach (var propertyInfo in _mainViewModel.CurrentViewModel!.GetType().GetProperties())
+            // {
+            //     Console.WriteLine(propertyInfo.Name);
+            // }
+            ChatViewModel chatViewModel = null;
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                chatViewModel = new ChatViewModel();
+                _mainViewModel.CurrentViewModel = chatViewModel; 
+            });
+            if (chatViewModel != null)
+            {
+                Console.WriteLine("started delaying");
+                await Task.Delay(1000);
+                await chatViewModel.StartChat(_mainViewModel, client);
+            }
+            
+                
+            
+            //_mainViewModel.CurrentViewModel = new TestViewModel();
+            
+            // Console.WriteLine("Current viewmodel properties after change");
+            // foreach (var propertyInfo in _mainViewModel.CurrentViewModel.GetType().GetProperties())
+            // {
+            //     Console.WriteLine(propertyInfo.Name);
+            // }
+            
         }
         else
             MessageBox.Show("Client with such username does not exist or wrong password has been entered",

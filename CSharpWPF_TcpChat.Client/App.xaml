@@ -16,6 +16,9 @@
             <DataTemplate DataType="{x:Type viewModels:RegisterViewModel}">
                 <views:RegisterView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:TestViewModel}">
+                <views:TestUserControl/>
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

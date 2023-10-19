@@ -27,9 +27,14 @@ public class Client
 
     public async Task InitiateClientAsync(Ef_Models.Client dbClient)
     {
-        _dbClient = dbClient;
-        await ConnectToServerAsync(_dbClient);
-        StartReceivingAsync();
+        await Task.Run(async () =>
+        {
+            _dbClient = dbClient;
+            await ConnectToServerAsync(_dbClient);
+            Console.WriteLine("InitiateClientAsync after ConnectToServerAsync before StartReceivingAsync");
+            var receivingTask = StartReceivingAsync();
+            Console.WriteLine("InitiateClientAsync after StartReceivingAsync  ");
+        });
     }
     
     private async Task ConnectToServerAsync(Ef_Models.Client dbClient)
@@ -37,20 +42,25 @@ public class Client
         await client.ConnectAsync(IPAddress.Parse("127.0.0.1"), 5000);
         var stream = client.GetStream();
         await stream.WriteAsync(Encoding.UTF8.GetBytes($"{dbClient.Username}{MessageModel.MessageSeparator}{dbClient.Password}"));
+        Console.WriteLine("ConnectToServerAsync after WriteAsync ");
     }
 
     private async Task StartReceivingAsync()
     {
         try
         {
+            Console.WriteLine("Entering the StartReceivingAsync ");
             while (true)
             {
                 var stream = client.GetStream();
                 var buffer = new byte[1024];
+                Console.WriteLine("StartReceivingAsync before stream.ReadByte();");
                 var messageOption = stream.ReadByte();
+                Console.WriteLine("StartReceivingAsync before await stream.ReadAsync(buffer);");
                 var receivedBytes = await stream.ReadAsync(buffer);
+                Console.WriteLine("StartReceivingAsync after await stream.ReadAsync(buffer);");
                 var receivedMessage = Encoding.UTF8.GetString(buffer, 0,receivedBytes);
-                
+                Console.WriteLine("StartReceivingAsync after received message");
                 
                 if (messageOption == MessageModel.SystemMessageByteOption)
                 {
@@ -72,6 +82,7 @@ public class Client
                 }
                 else 
                     OnMessageReceived(int.Parse(receivedMessage));
+                Console.WriteLine("StartReceivingAsync after actions made on message received");
             }
         }
         catch (Exception ex)

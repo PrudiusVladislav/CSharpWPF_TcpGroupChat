@@ -49,9 +49,18 @@ public class Server
                     dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
                     isClientNew = true;
                 }
+
+                ClientModel acceptedUser;
+                if (_onlineClients.TryGetValue(userName, out var connectedOnlineClient))
+                {
+                    acceptedUser = connectedOnlineClient;
+                }
+                else
+                {
+                    acceptedUser = new ClientModel(client, userName, dbClientToConnect!.Id);
+                    _onlineClients.Add(acceptedUser.UserName, acceptedUser);
+                }
                 
-                var acceptedUser = new ClientModel(client, userName, dbClientToConnect!.Id);
-                _onlineClients.Add(acceptedUser.UserName, acceptedUser);
                 Console.WriteLine($"[{DateTime.Now}] user with username {acceptedUser.UserName} has connected");
                 if(isClientNew)
                     BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, await dbContext.Clients.ToListAsync(),

@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using CSharpWPF_TcpChat.Client.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using SharedUtilities;
@@ -20,7 +22,7 @@ public class ChatViewModel: ObservableObject
     private Ef_Models.Client _dbClient;
     private Infrastructure.Client? _client;
     
-    public MainViewModel MainVM { get; }
+    public MainViewModel MainVM { get; private set; }
     public ObservableCollection<string> ChatNames { get; set; }
     public ObservableCollection<MessageModel> ChatMessages { get; set; }
     
@@ -72,14 +74,9 @@ public class ChatViewModel: ObservableObject
         }
     }
     
-    public ChatViewModel(MainViewModel mainVm, Ef_Models.Client dbClient)
+    public ChatViewModel()
     { 
-        MainVM = mainVm;
-        _dbClient = dbClient;
-        ConnectAsync();
-        LoadChats();
-        ChatMessages = new ObservableCollection<MessageModel>();
-        
+        Console.WriteLine("ChatViewModel constructor enter");
         SendCommand = new RelayCommand((command) =>
             {
                 ExecuteSendMessageCommand();
@@ -106,34 +103,56 @@ public class ChatViewModel: ObservableObject
         }, o => true);
     }
 
+    public async Task StartChat(MainViewModel mainVM, Ef_Models.Client dbClient)
+    {
+        Console.WriteLine("StartChat constructor enter");
+        MainVM = mainVM;
+        _dbClient = dbClient;
+        await ConnectAsync();
+        Console.WriteLine("StartChat after await ConnectAsync ");
+        await LoadChats();
+        Console.WriteLine("StartChat after await LoadChats(); ");
+        ChatMessages = new ObservableCollection<MessageModel>();
+        Console.WriteLine("StartChat after ChatMessages = new ObservableCollection<MessageModel>(); ");
+    }
+    
     private async void ExecuteDisconnectCommand()
     {
         await _client!.SendMessageAsync(MessageModel.SystemMessageByteOption,MessageModel.ExitMessage);
         WindowDialogResult = true; // close the app window on disconnect 
     }
     
-    private async void ConnectAsync()
+    private async Task ConnectAsync()
     {
         _client = new Infrastructure.Client(_dbClient.Username);
         _client.MessageReceived += HandleMessageReceived;
         _client.EventOccurred += HandleEventOccurred;
         _client.NewUserAdded += HandleClientAdded;
-        
+        Console.WriteLine("ChatVM.ConnectAsync after creating client");
         await _client.InitiateClientAsync(_dbClient);
+        Console.WriteLine("ChatVM.ConnectAsync after await _client.InitiateClientAsync(_dbClient);");
     }
 
-    private async void LoadChats()
+    private async Task LoadChats()
     {
+        Console.WriteLine("ChatVM.LoadChats enter");
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
         var resultChatNames = await dbContext.Groups.Select(g => g.GroupName).ToListAsync();
         resultChatNames.AddRange(await dbContext.Clients.Select(c => c.Username).ToListAsync());
-        ChatNames = new ObservableCollection<string>(resultChatNames);
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            ChatNames = new ObservableCollection<string>(resultChatNames);
+        });
+        Console.WriteLine($"ChatVM.LoadChats end ChatNames Length: {ChatNames.Count}");
     }
     
     private async void ExecuteSendMessageCommand()
     {
         await _client!.SendMessageAsync(MessageModel.CommonMessageByteOption, $"{SelectedChatName}{MessageModel.MessageSeparator}{EnteredMessage}");
-        EnteredMessage = string.Empty;
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            EnteredMessage = string.Empty;
+        });
     }
     
     private async void HandleMessageReceived(int messageId)
@@ -174,13 +193,20 @@ public class ChatViewModel: ObservableObject
     {
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
         var clientToAdd = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
-        if(clientToAdd != null)
-            ChatNames.Add(clientToAdd.Username);
+        if (clientToAdd != null)
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                ChatNames.Add(clientToAdd.Username);
+            });
     }
     
     private void HandleEventOccurred(string eventMessage)
     {
-        MessageBox.Show(eventMessage, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+        Console.WriteLine($"Client: event occurred: {eventMessage}");
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            MessageBox.Show(eventMessage, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+        });
     }
 
     public async Task AddGroupAsync(string groupName)
@@ -202,13 +228,20 @@ public class ChatViewModel: ObservableObject
                     (chat.FirstClient.Username == _dbClient.Username && chat.SecondClient.Username == SelectedChatName));
             if (personalChat != null)
             {
-                ChatMessages = new ObservableCollection<MessageModel>(personalChat.Messages.Select(message =>
-                        new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent))
-                    .ToList());
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ChatMessages = new ObservableCollection<MessageModel>(personalChat.Messages.Select(message =>
+                            new MessageModel(message.SenderClient.Username, message.TimeOfSending,
+                                message.MessageContent))
+                        .ToList());
+                });
                 return;
             }
 
-            ChatMessages = new ObservableCollection<MessageModel>();
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                ChatMessages = new ObservableCollection<MessageModel>();
+            });
             return;
         }
 
@@ -217,14 +250,20 @@ public class ChatViewModel: ObservableObject
             .ThenInclude(message => message.SenderClient).Include(group => group.GroupMembers).FirstOrDefaultAsync(g => g.GroupName == SelectedChatName);
         if (group != null)
         {
-            ChatMessages = new ObservableCollection<MessageModel>(group.Messages.Select(message =>
-                    new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent))
-                .ToList());
-            MembersNumber = group.GroupMembers.Count;
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                ChatMessages = new ObservableCollection<MessageModel>(group.Messages.Select(message =>
+                                    new MessageModel(message.SenderClient.Username, message.TimeOfSending, message.MessageContent))
+                                .ToList());
+                MembersNumber = group.GroupMembers.Count;
+            });
             return;
         }
 
-        MembersNumber = 0;
-        ChatMessages = new ObservableCollection<MessageModel>();
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            MembersNumber = 0;
+            ChatMessages = new ObservableCollection<MessageModel>();
+        });
     }
 }
