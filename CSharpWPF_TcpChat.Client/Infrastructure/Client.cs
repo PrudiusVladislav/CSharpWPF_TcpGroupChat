@@ -75,7 +75,7 @@ public class Client
                         case MessageModel.NewUserAddedMessage:
                         {
                             var userId = int.Parse(parameters);
-                            Console.WriteLine($"added user id = {userId}");
+                            Console.WriteLine($"ADDED USER ID = {userId}");
                             if(!_dbClient!.Id.Equals(userId))
                                 OnNewUserAdded(userId);
                             break;

@@ -35,7 +35,7 @@ public class Server
                 var userName =
                     receivedMessage[..receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal)];
 
-                bool isClientNew = false;
+                var isClientNew = false;
                 await using var dbContext = _dbContextFactory.CreateDbContext();
                 var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
                 if (dbClientToConnect == null)
@@ -68,11 +68,19 @@ public class Server
                 if (isClientNew)
                 {
                     Console.WriteLine("right before broadcasting new client id");
-                    BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, await dbContext.Clients.ToListAsync(),
-                        $"{MessageModel.NewUserAddedMessage}{MessageModel.MessageSeparator}{acceptedUser.DbClientId}");
-                }
                     
-                HandleOneUserAsync(acceptedUser);
+                    var receivers = await dbContext.Clients.ToListAsync();
+                    Task.Run(async () =>
+                    {
+                        await BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption,
+                            receivers,
+                            $"{MessageModel.NewUserAddedMessage}{MessageModel.MessageSeparator}{acceptedUser.DbClientId}");
+                    });
+                }
+                Task.Run(async () =>
+                {
+                    await HandleOneUserAsync(acceptedUser);
+                });
             }
         }
         catch (Exception ex)
@@ -202,7 +210,10 @@ public class Server
                         MessageContent = receivedMessageContent, ChatModel = messageOriginChatModel}; 
                     await dbContext.Messages.AddAsync(dbMessage);
                     await dbContext.SaveChangesAsync();
-                    BroadCastTextMessageAsync(MessageModel.CommonMessageByteOption, clientsToReceiveMessage,  $"{dbMessage.Id}");
+                    Task.Run(async () =>
+                    {
+                       await BroadCastTextMessageAsync(MessageModel.CommonMessageByteOption, clientsToReceiveMessage,  $"{dbMessage.Id}");
+                    });
                 }
             }
         }
@@ -246,6 +257,7 @@ public class Server
         {
             if (_onlineClients.TryGetValue(receiverUser.Username, out var receiverClient))
             {
+                Console.WriteLine($"Receiver name: {receiverClient.UserName}"); 
                 tasks.Add(Task.Run(async () =>
                 {
                     var stream = receiverClient.Client.GetStream();
