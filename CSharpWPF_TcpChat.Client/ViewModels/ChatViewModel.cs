@@ -76,7 +76,6 @@ public class ChatViewModel: ObservableObject
     
     public ChatViewModel()
     { 
-        Console.WriteLine("ChatViewModel constructor enter");
         SendCommand = new RelayCommand((command) =>
             {
                 ExecuteSendMessageCommand();
@@ -105,13 +104,10 @@ public class ChatViewModel: ObservableObject
 
     public async Task StartChat(MainViewModel mainVM, Ef_Models.Client dbClient)
     {
-        Console.WriteLine("StartChat constructor enter");
         MainVM = mainVM;
         _dbClient = dbClient;
         await ConnectAsync();
-        Console.WriteLine("StartChat after await ConnectAsync ");
         await LoadChats();
-        Console.WriteLine("StartChat after await LoadChats(); ");
     }
     
     private async void ExecuteDisconnectCommand()
@@ -126,14 +122,13 @@ public class ChatViewModel: ObservableObject
         _client.MessageReceived += HandleMessageReceived;
         _client.EventOccurred += HandleEventOccurred;
         _client.NewUserAdded += HandleClientAdded;
-        Console.WriteLine("ChatVM.ConnectAsync after creating client");
+        _client.GroupAdded += HandleGroupAdded;
+        
         await _client.InitiateClientAsync(_dbClient);
-        Console.WriteLine("ChatVM.ConnectAsync after await _client.InitiateClientAsync(_dbClient);");
     }
 
     private async Task LoadChats()
     {
-        Console.WriteLine("ChatVM.LoadChats enter");
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
         var resultChatNames = await dbContext.Groups.Select(g => g.GroupName).ToListAsync();
         resultChatNames.AddRange(await dbContext.Clients.Where(c => c.Id != _dbClient.Id).Select(c => c.Username).ToListAsync());
@@ -144,7 +139,6 @@ public class ChatViewModel: ObservableObject
                 ChatNames.Add(name);
             }
         });
-        Console.WriteLine($"ChatVM.LoadChats end ChatNames Length: {ChatNames.Count}");
     }
     
     private async void ExecuteSendMessageCommand()
@@ -158,7 +152,6 @@ public class ChatViewModel: ObservableObject
     
     private async void HandleMessageReceived(int messageId)
     {
-        Console.WriteLine($"Handle message received entered; message id = {messageId} (_dbclientId = {_dbClient.Id})");
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
         var message = await dbContext.Messages.Include(m => m.SenderClient).Include(message => message.ChatModel).FirstOrDefaultAsync(m => m.Id == messageId);
         //checking if the group/personal chat the message came from is the selected one right now, if so, add the message to the ChatMessages,
@@ -181,7 +174,6 @@ public class ChatViewModel: ObservableObject
             }
             case { ChatModel: PersonalChat personalChat }:
             {
-                Console.WriteLine("received message handler:  case { ChatModel: PersonalChat personalChat }: enter");
                 var messageOriginPersonalChat = await dbContext.PersonalChats
                     .Include(pc => pc.FirstClient).Include(pc => pc.SecondClient).FirstOrDefaultAsync(c => c.Id == personalChat.Id);
                 if (messageOriginPersonalChat != null &&
@@ -206,27 +198,39 @@ public class ChatViewModel: ObservableObject
         var clientToAdd = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
         if (clientToAdd != null)
         {
-            Console.WriteLine("adding the client to ui");
-            Application.Current.Dispatcher.Invoke(() =>
+            if (!clientToAdd.Username.Equals(_dbClient.Username))
             {
-                ChatNames.Add(clientToAdd.Username);
-            });
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ChatNames.Add(clientToAdd.Username);
+                });
+            }
         }
     }
     
     private void HandleEventOccurred(string eventMessage)
     {
-        Console.WriteLine($"Client: event occurred: {eventMessage}");
         Application.Current.Dispatcher.Invoke(() =>
         {
             MessageBox.Show(eventMessage, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
         });
     }
 
+    private async void HandleGroupAdded(int groupId)
+    {
+        await using var  dbContext = MainVM.ChatContextFactory.CreateDbContext();
+        var group= await dbContext.Groups.FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group != null)
+        {
+            Application.Current.Dispatcher.Invoke(() => { ChatNames.Add(group.GroupName); });
+        }
+
+    }
+    
     public async Task AddGroupAsync(string groupName)
     {
         await _client!.SendMessageAsync(MessageModel.SystemMessageByteOption,
-            $"{MessageModel.AddGroupRequestMessage}{MessageModel.MessageSeparator}{groupName}{_dbClient.Id}");
+            $"{MessageModel.AddGroupRequestMessage}{MessageModel.MessageSeparator}{groupName}{MessageModel.MessageSeparator}{_dbClient.Id}");
     }
 
     private async void SelectedChatNameChanged()

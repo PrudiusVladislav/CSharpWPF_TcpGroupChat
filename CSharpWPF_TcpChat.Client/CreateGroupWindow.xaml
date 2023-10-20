@@ -27,7 +27,8 @@
                    HorizontalAlignment="Center" VerticalAlignment="Center"></Label>
             <TextBox Grid.Column="1" FontSize="17" Margin="0 30 10 30"
                      MaxLength="35" Padding="10 0"
-                     Text="{Binding GroupName}"></TextBox>
+                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                     Text="{Binding GroupName, UpdateSourceTrigger=PropertyChanged}"></TextBox>
         </Grid>
         <Button Grid.Row="2" Content="Create group" Margin="120 10 120 50"
                 FontSize="19" Command="{Binding CreateGroupCommand}"

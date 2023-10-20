@@ -1,4 +1,5 @@
 
+using System;
 using System.Windows;
 using System.Windows.Input;
 using CSharpWPF_TcpChat.Client.Infrastructure;
@@ -33,7 +34,6 @@ public class CreateGroupViewModel: ObservableObject
     private async void ExecuteCreateGroupCommand()
     {
         if (ChatVM == null) return;
-        
         await using var dbContext = ChatVM.MainVM.ChatContextFactory.CreateDbContext();
         if (await dbContext.Groups.AnyAsync(g => g.GroupName.Equals(GroupName)))
             MessageBox.Show("Group with such name already exists. Try another one",

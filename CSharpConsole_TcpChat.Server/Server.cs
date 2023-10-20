@@ -40,15 +40,12 @@ public class Server
                 var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
                 if (dbClientToConnect == null)
                 {
-                    Console.WriteLine("dbClientToConnect == null enter");
                     var password =
                         receivedMessage[
                             (receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)..];
                     await dbContext.Clients.AddAsync(new Client() { Username = userName, Password = password });
                     await dbContext.SaveChangesAsync();
-                    Console.WriteLine("after adding dbClientToConnect");
                     dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
-                    Console.WriteLine($"after adding check {dbClientToConnect == null}");
                     isClientNew = true;
                 }
 
@@ -61,14 +58,11 @@ public class Server
                 {
                     acceptedUser = new ClientModel(client, userName, dbClientToConnect!.Id);
                     _onlineClients.Add(acceptedUser.UserName, acceptedUser);
-                    Console.WriteLine("after adding the client to the online clients");
                 }
                 
                 Console.WriteLine($"[{DateTime.Now}] user with username {acceptedUser.UserName} has connected");
                 if (isClientNew)
                 {
-                    Console.WriteLine("right before broadcasting new client id");
-                    
                     var receivers = await dbContext.Clients.ToListAsync();
                     Task.Run(async () =>
                     {
@@ -86,8 +80,6 @@ public class Server
         catch (Exception ex)
         {
             Console.WriteLine($"[{DateTime.Now}] Error occurred while handling clients: {ex.Message}");
-            //var messageModel = new MessageModel("SERVER", DateTime.Now, ex.Message);
-            //await BroadCastTextMessageAsync(MessageModel.CommonMessageByteOption, messageModel.ToString());
         }
         finally
         {
@@ -114,19 +106,19 @@ public class Server
                 var messageCommand =
                     receivedMessage[..receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal)];
                 await using var dbContext = _dbContextFactory.CreateDbContext();
-                switch (messageCommand)
+                if (bytesOption == MessageModel.SystemMessageByteOption)
                 {
-                    case MessageModel.AddGroupRequestMessage:
+                    switch (messageCommand)
                     {
-                        if (bytesOption == MessageModel.SystemMessageByteOption)
+                        case MessageModel.AddGroupRequestMessage:
                         {
                             var groupName = receivedMessage[(receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)
                                 ..(receivedMessage.LastIndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal))];
                             var clientCreatorId = receivedMessage[(receivedMessage.LastIndexOf(MessageModel.MessageSeparator,
-                                        StringComparison.Ordinal) + 1)..];
+                                StringComparison.Ordinal) + 1)..];
                             
                             var newGroup = new Group() { GroupName = groupName };
-                            var clientCreator = await dbContext.Clients.FindAsync(clientCreatorId);
+                            var clientCreator = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == int.Parse(clientCreatorId));
                             if (clientCreator != null)
                             {
                                 var clientsGroup = new ClientsGroups
@@ -137,8 +129,15 @@ public class Server
                                 await dbContext.ClientsGroups.AddAsync(clientsGroup);
                             }
                             await dbContext.Groups.AddAsync(newGroup);
+                            await dbContext.SaveChangesAsync();
+                            var receivers = await dbContext.Clients.ToListAsync();
+                            Task.Run(async () =>
+                            {
+                                await BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, receivers,  
+                                    $"{MessageModel.GroupAddedMessage}{MessageModel.MessageSeparator}{newGroup.Id}");
+                            });
+                            break;
                         }
-                        break;
                     }
                 }
                 
@@ -231,23 +230,6 @@ public class Server
             Console.WriteLine($"[{DateTime.Now}] user with username {user.UserName} has disconnected");
         }
     }
-
-    
-    // private async Task BroadCastMessageAsync(byte messageType,string receiverName,  MessageModel message)
-    // {
-    //     var tasks = new List<Task>();
-    //     foreach (var user in _onlineClients.Values)
-    //     {
-    //         tasks.Add(Task.Run(async () =>
-    //         {
-    //             var stream = user.Client.GetStream();
-    //             stream.WriteByte(messageType);
-    //             await stream.WriteAsync(Encoding.UTF8.GetBytes(message.ToString()));
-    //         }));
-    //     }
-    //     await Task.WhenAll(tasks);
-    // }
-    
     
     //the receiver name can be either name of a group or a client that should receive the message
     private async Task BroadCastTextMessageAsync(byte messageType, IEnumerable<Client> receivers, string textMessage)
@@ -257,7 +239,6 @@ public class Server
         {
             if (_onlineClients.TryGetValue(receiverUser.Username, out var receiverClient))
             {
-                Console.WriteLine($"Receiver name: {receiverClient.UserName}"); 
                 tasks.Add(Task.Run(async () =>
                 {
                     var stream = receiverClient.Client.GetStream();

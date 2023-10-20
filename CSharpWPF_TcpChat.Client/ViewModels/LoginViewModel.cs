@@ -65,11 +65,7 @@ public class LoginViewModel: ObservableObject
             });
             if (chatViewModel != null)
             {
-                await Task.Run(async() =>
-                {
-                   await chatViewModel.StartChat(_mainViewModel, client);
-                });
-                //await chatViewModel.StartChat(_mainViewModel, client);
+                await chatViewModel.StartChat(_mainViewModel, client);
             }
         }
         else
