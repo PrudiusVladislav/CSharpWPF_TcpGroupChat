@@ -43,11 +43,7 @@ public class RegisterViewModel: ObservableObject
         {
             ExecuteRegisterCommand();
         }, o => !(string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password)));
-        LogInCommand = new RelayCommand((action) =>
-        {
-            _mainViewModel.LoginVM ??= new LoginViewModel(_mainViewModel);
-            _mainViewModel.CurrentViewModel = _mainViewModel.LoginVM;
-        }, o => true);
+        LogInCommand = new RelayCommand(ExecuteLogInCommand, o => true);
     }
 
     private async void ExecuteRegisterCommand()
@@ -84,5 +80,11 @@ public class RegisterViewModel: ObservableObject
                 });
             }
         }
+    }
+
+    private void ExecuteLogInCommand(object? param)
+    {
+        _mainViewModel.LoginVM ??= new LoginViewModel(_mainViewModel);
+        _mainViewModel.CurrentViewModel = _mainViewModel.LoginVM;
     }
 }

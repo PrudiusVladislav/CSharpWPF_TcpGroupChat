@@ -16,11 +16,6 @@ public class MessageModel
     public const string AddGroupRequestMessage = "GROUP_ADD";
     public const string GroupRemoved = "REMOVED_GROUP";
     public const string GroupAddedMessage = "ADDED_GROUP";
-    public const string AddPersonalChatRequestMessage = "PERSONAL_CHAT_ADD";
-    public const string PersonalChatMessageType = "PERSONAL_CHAT_MESSAGE";
-    public const string GroupChatMessage = "GROUP_CHAT_MESSAGE";
-    //public const string IsClientOnlineRequest = "CLIENT_ONLINE_REQUEST";
-    //public const string IsClientOnlineResponse = "CLIENT_ONLINE_RESPONSE";
     public const char MessageSeparator = '|';
     
     public string SenderUserName { get; set; }
@@ -34,6 +29,41 @@ public class MessageModel
         MessageText = messageText;
     }
 
+    public static string GetMessagePart(string message, int partNumber)
+    {
+        if (partNumber > message.Count(c => c == MessageModel.MessageSeparator)) return string.Empty;
+        
+        var startIndex = GetIndexOfNthOccurrence(message, MessageModel.MessageSeparator, partNumber) + 1;
+        var endIndex = GetIndexOfNthOccurrence(message, MessageModel.MessageSeparator, partNumber + 1);
+
+        return endIndex == -1 ? message[startIndex..] : message[startIndex..endIndex];
+    }
+
+    public static int GetIndexOfNthOccurrence(string input, char charToSeek, int n)
+    {
+        if (n < 0)
+            throw new ArgumentOutOfRangeException(nameof(n), "Value of n must be greater than 0");
+        if (n == 0)
+            return -1;
+
+        var index = -1;
+        for (var i = 0; i < input.Length; i++)
+        {
+            if (input[i] != charToSeek) continue;
+            n--;
+            
+            if (n != 0) continue;
+            index = i;
+            break;
+        }
+        return index;
+    }
+
+    public static string FormMessage(params string[] arguments)
+    {
+        return string.Join(MessageSeparator, arguments);
+    }
+    
     public override string ToString()
     {
         return $"[{SendingTime}] {SenderUserName}: {MessageText}";

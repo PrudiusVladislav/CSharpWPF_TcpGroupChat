@@ -36,8 +36,10 @@ public class CreateGroupViewModel: ObservableObject
         if (ChatVM == null) return;
         await using var dbContext = ChatVM.MainVM.ChatContextFactory.CreateDbContext();
         if (await dbContext.Groups.AnyAsync(g => g.GroupName.Equals(GroupName)))
+        {
             MessageBox.Show("Group with such name already exists. Try another one",
                 "Invalid name data", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+        }
         else
             await ChatVM.AddGroupAsync(GroupName);
     }

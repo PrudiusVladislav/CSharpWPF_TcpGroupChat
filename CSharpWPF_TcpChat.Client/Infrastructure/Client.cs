@@ -41,7 +41,8 @@ public class Client
     {
         await client.ConnectAsync(IPAddress.Parse("127.0.0.1"), 5000);
         var stream = client.GetStream();
-        await stream.WriteAsync(Encoding.UTF8.GetBytes($"{dbClient.Username}{MessageModel.MessageSeparator}{dbClient.Password}"));
+        var connectionMessage = MessageModel.FormMessage(dbClient.Username, dbClient.Password);
+        await stream.WriteAsync(Encoding.UTF8.GetBytes(connectionMessage));
     }
 
     private async Task StartReceivingAsync()
@@ -61,8 +62,8 @@ public class Client
                     if(receivedMessage.Equals(MessageModel.ExitMessageResponse))
                         break;
                     
-                    var messageCommand = receivedMessage[..receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal)];
-                    var parameters = receivedMessage[(receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)..];
+                    var messageCommand = MessageModel.GetMessagePart(receivedMessage, 0);
+                    var parameters = MessageModel.GetMessagePart(receivedMessage, 1);
                     switch (messageCommand)
                     {
                         case MessageModel.NewUserAddedMessage:
@@ -79,6 +80,7 @@ public class Client
                         }
                     }
                 }
+                //if it isn't system message, but the common one, then the client expects to get the db id of the message
                 else 
                     OnMessageReceived(int.Parse(receivedMessage));
             }
@@ -124,5 +126,4 @@ public class Client
     {
         GroupAdded?.Invoke(groupId);
     }
-    
 }
