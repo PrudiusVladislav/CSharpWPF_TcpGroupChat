@@ -6,4 +6,8 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\EfCore_Models\EfCore_Models.csproj" />
+    </ItemGroup>
+
 </Project>

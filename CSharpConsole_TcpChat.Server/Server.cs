@@ -32,17 +32,14 @@ public class Server
                 var buffer = new byte[1024];
                 var receivedBytes = await stream.ReadAsync(buffer);
                 var receivedMessage = Encoding.UTF8.GetString(buffer, 0,receivedBytes);
-                var userName =
-                    receivedMessage[..receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal)];
+                var userName = receivedMessage.GetMessagePart(0);
 
                 var isClientNew = false;
                 await using var dbContext = _dbContextFactory.CreateDbContext();
                 var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
                 if (dbClientToConnect == null)
                 {
-                    var password =
-                        receivedMessage[
-                            (receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)..];
+                    var password = receivedMessage.GetMessagePart(1);
                     await dbContext.Clients.AddAsync(new Client() { Username = userName, Password = password });
                     await dbContext.SaveChangesAsync();
                     dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
@@ -66,7 +63,7 @@ public class Server
                     var receivers = await dbContext.Clients.ToListAsync();
                     Task.Run(async () =>
                     {
-                        await BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption,
+                        await BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, 
                             receivers,
                             $"{MessageModel.NewUserAddedMessage}{MessageModel.MessageSeparator}{acceptedUser.DbClientId}");
                     });
@@ -103,42 +100,33 @@ public class Server
                 {
                     break;
                 }
-                var messageCommand =
-                    receivedMessage[..receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal)];
+                var messageCommand = receivedMessage.GetMessagePart(0);
                 await using var dbContext = _dbContextFactory.CreateDbContext();
-                if (bytesOption == MessageModel.SystemMessageByteOption)
+                if (bytesOption == MessageModel.SystemMessageByteOption && messageCommand ==  MessageModel.AddGroupRequestMessage)
                 {
-                    switch (messageCommand)
-                    {
-                        case MessageModel.AddGroupRequestMessage:
-                        {
-                            var groupName = receivedMessage[(receivedMessage.IndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal) + 1)
-                                ..(receivedMessage.LastIndexOf(MessageModel.MessageSeparator, StringComparison.Ordinal))];
-                            var clientCreatorId = receivedMessage[(receivedMessage.LastIndexOf(MessageModel.MessageSeparator,
-                                StringComparison.Ordinal) + 1)..];
+                    var groupName = receivedMessage.GetMessagePart(1);
+                    var clientCreatorId = receivedMessage.GetMessagePart(2);
                             
-                            var newGroup = new Group() { GroupName = groupName };
-                            var clientCreator = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == int.Parse(clientCreatorId));
-                            if (clientCreator != null)
-                            {
-                                var clientsGroup = new ClientsGroups
-                                {
-                                    Client = clientCreator,
-                                    Group = newGroup,
-                                };
-                                await dbContext.ClientsGroups.AddAsync(clientsGroup);
-                            }
-                            await dbContext.Groups.AddAsync(newGroup);
-                            await dbContext.SaveChangesAsync();
-                            var receivers = await dbContext.Clients.ToListAsync();
-                            Task.Run(async () =>
-                            {
-                                await BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, receivers,  
-                                    $"{MessageModel.GroupAddedMessage}{MessageModel.MessageSeparator}{newGroup.Id}");
-                            });
-                            break;
-                        }
+                    var newGroup = new Group() { GroupName = groupName };
+                    var clientCreator = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == int.Parse(clientCreatorId));
+                    if (clientCreator != null)
+                    {
+                        var clientsGroup = new ClientsGroups
+                        {
+                            Client = clientCreator,
+                            Group = newGroup,
+                        };
+                        await dbContext.ClientsGroups.AddAsync(clientsGroup);
                     }
+                    await dbContext.Groups.AddAsync(newGroup);
+                    await dbContext.SaveChangesAsync();
+                    var receivers = await dbContext.Clients.ToListAsync();
+                    Task.Run(async () =>
+                    {
+                        await BroadCastTextMessageAsync(MessageModel.SystemMessageByteOption, receivers,  
+                            $"{MessageModel.GroupAddedMessage}{MessageModel.MessageSeparator}{newGroup.Id}");
+                    });
+                    break;         
                 }
                 
                 Console.WriteLine($"[{DateTime.Now}] user with username {user.UserName} has sent message: {receivedMessage}");
@@ -146,8 +134,7 @@ public class Server
                 //if the message type is not systemMessage, but common message, the structure of the message is:
                 //              "Name of chat it came from" | "Content of message"
                 //so messageCommand in this case is the name of chat (or client if it is personal chat)
-                var receivedMessageContent = receivedMessage[(receivedMessage.IndexOf(MessageModel.MessageSeparator,
-                    StringComparison.Ordinal) + 1)..];
+                var receivedMessageContent = receivedMessage.GetMessagePart(1);
                 ChatModel messageOriginChatModel = null;
                 var clientsToReceiveMessage = new List<Client>();
                 if (messageCommand[0] == '@') //the received chatName is name of a client
@@ -158,9 +145,8 @@ public class Server
                     {
                         var personalChat = await dbContext.PersonalChats
                             .Include(personalChat => personalChat.FirstClient)
-                            .Include(personalChat => personalChat.SecondClient).FirstOrDefaultAsync(pc =>
-                            (pc.FirstClient.Id == receiverClient.Id && pc.SecondClientId == user.DbClientId) ||
-                            (pc.SecondClient.Id == receiverClient.Id && pc.FirstClientId == user.DbClientId));
+                            .Include(personalChat => personalChat.SecondClient)
+                            .GetPersonalChat(receiverClient.Id, user.DbClientId);
                         
                         //checks if there is no personal chat established yet, between the user and receiverClient, than creates one
                         if (personalChat == null)
@@ -183,7 +169,8 @@ public class Server
                 //means that the receiver is a group
                 else
                 {
-                    var receiverGroup = await dbContext.Groups.Include(g => g.GroupMembers)
+                    var receiverGroup = await dbContext.Groups
+                        .Include(g => g.GroupMembers)
                         .ThenInclude(clientsGroups => clientsGroups.Client)
                         .FirstOrDefaultAsync(g => g.GroupName == messageCommand);
                     if (receiverGroup != null)
@@ -205,8 +192,13 @@ public class Server
 
                 if (messageOriginChatModel != null)
                 {
-                    var dbMessage = new Message() { TimeOfSending = DateTime.Now, SenderClientId = user.DbClientId,
-                        MessageContent = receivedMessageContent, ChatModel = messageOriginChatModel}; 
+                    var dbMessage = new Message() { 
+                        TimeOfSending = DateTime.Now, 
+                        SenderClientId = user.DbClientId,
+                        MessageContent = receivedMessageContent, 
+                        ChatModel = messageOriginChatModel
+                        
+                    }; 
                     await dbContext.Messages.AddAsync(dbMessage);
                     await dbContext.SaveChangesAsync();
                     Task.Run(async () =>
@@ -237,15 +229,13 @@ public class Server
         var tasks = new List<Task>();
         foreach (var receiverUser in receivers)
         {
-            if (_onlineClients.TryGetValue(receiverUser.Username, out var receiverClient))
+            if (!_onlineClients.TryGetValue(receiverUser.Username, out var receiverClient)) continue;
+            tasks.Add(Task.Run(async () =>
             {
-                tasks.Add(Task.Run(async () =>
-                {
-                    var stream = receiverClient.Client.GetStream();
-                    stream.WriteByte(messageType);
-                    await stream.WriteAsync(Encoding.UTF8.GetBytes(textMessage));
-                }));
-            }
+                var stream = receiverClient.Client.GetStream();
+                stream.WriteByte(messageType);
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(textMessage));
+            }));
         }
         await Task.WhenAll(tasks);
     }
