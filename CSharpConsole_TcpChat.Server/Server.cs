@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SharedUtilities;
 using Ef_Models;
+using Microsoft.EntityFrameworkCore.Design;
 
 namespace CSharpConsole_TcpChat.Server;
 
@@ -14,6 +15,7 @@ public class Server
     private readonly TcpListener listener;
     private ChatDbContextFactory _dbContextFactory;
 
+    private record ConnectedDbClient(Client? Client, bool IsNew);
     private record ReceivedMessageData(int ByteOption, string ReceivedMessageContent);
     private record MessageToBroadcastInfo(ChatModel? MessageOriginChatModel, List<Client> ClientsReceivers);
     
@@ -41,31 +43,11 @@ public class Server
                 var buffer = new byte[1024];
                 var receivedBytes = await stream.ReadAsync(buffer);
                 var receivedMessage = Encoding.UTF8.GetString(buffer, 0,receivedBytes);
-                var userName = MessageModel.GetMessagePart(receivedMessage, 0);
-
-                var isClientNew = false;
+                
                 await using var dbContext = _dbContextFactory.CreateDbContext();
-                var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
-                if (dbClientToConnect == null)
-                {
-                    var password = MessageModel.GetMessagePart(receivedMessage, 1);
-                    await dbContext.Clients.AddAsync(new Client() { Username = userName, Password = password });
-                    await dbContext.SaveChangesAsync();
-                    
-                    dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(userName));
-                    isClientNew = true;
-                }
-
-                ClientModel acceptedUser;
-                if (!_onlineClients.TryGetValue(userName, out var connectedOnlineClient))
-                {
-                    acceptedUser = new ClientModel(client, userName, dbClientToConnect!.Id);
-                    _onlineClients.Add(acceptedUser.UserName, acceptedUser);
-                }
-                else
-                {
-                    acceptedUser = connectedOnlineClient;
-                }
+                var (dbClientToConnect, isClientNew) = await GetOrCreateClientAsync(dbContext, receivedMessage);
+                
+                var acceptedUser = GetOnlineClient(dbClientToConnect!.Username, client, dbClientToConnect!.Id);
                 Console.WriteLine($"[{DateTime.Now}] user with username {acceptedUser.UserName} has connected");
                 
                 if (isClientNew)
@@ -138,7 +120,31 @@ public class Server
             await CloseClientConnection(user);
         }
     }
+    
+    private ClientModel GetOnlineClient(string userName, TcpClient client, int id)
+    {
+        if (_onlineClients.TryGetValue(userName, out var connectedOnlineClient)) return connectedOnlineClient;
+        
+        var acceptedUser = new ClientModel(client, userName, id);
+        _onlineClients.Add(acceptedUser.UserName, acceptedUser);
+        return acceptedUser;
+    }
 
+    private async Task<ConnectedDbClient> GetOrCreateClientAsync(ChatDbContext dbContext, string receivedClientArguments)
+    {
+        var username = MessageModel.GetMessagePart(receivedClientArguments, 0);
+        var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(username));
+        if (dbClientToConnect != null)
+            return new ConnectedDbClient(dbClientToConnect, false);
+        
+        var password = MessageModel.GetMessagePart(receivedClientArguments, 1);
+        await dbContext.Clients.AddAsync(new Client() { Username = username, Password = password });
+        await dbContext.SaveChangesAsync();
+                    
+        dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(username));
+        return new ConnectedDbClient(dbClientToConnect, true);
+    }
+    
     private async Task CloseClientConnection(ClientModel user)
     {
         var stream = user.Client.GetStream();

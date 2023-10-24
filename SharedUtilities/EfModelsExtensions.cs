@@ -7,8 +7,9 @@ public static class EfModelsExtensions
 {
     public static Task<PersonalChat?> GetPersonalChatAsync(this IQueryable<PersonalChat> source, int firstId, int secondId)
     {
-        return source.FirstOrDefaultAsync(pc => (pc.FirstClient.Id == firstId && pc.SecondClientId == secondId) ||
-                                         (pc.SecondClient.Id == secondId && pc.FirstClientId == firstId));
+        return source.FirstOrDefaultAsync(pc => 
+            (pc.FirstClient.Id == firstId && pc.SecondClientId == secondId) ||
+            (pc.SecondClient.Id == secondId && pc.FirstClientId == firstId));
     }
     public static Task<PersonalChat?> GetPersonalChatAsync(this IQueryable<PersonalChat> source, string firstUsername, string secondUsername)
     {
