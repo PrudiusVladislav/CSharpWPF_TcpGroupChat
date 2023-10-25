@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Ef_Models;
 
-public class ChatDbContextFactory: IDesignTimeDbContextFactory<ChatDbContext>
+public class ChatDbContextFactory: IDesignTimeDbContextFactory<ChatDbContext>, IChatDbContextFactory<ChatDbContext>
 {
     public ChatDbContext CreateDbContext(string[]? args = null)
     {
