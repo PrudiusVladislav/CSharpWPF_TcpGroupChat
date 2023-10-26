@@ -258,32 +258,16 @@ public class ChatViewModel: ObservableObject
         await using var dbContext = MainVM.ChatContextFactory.CreateDbContext();
         if (SelectedChatName![0] == '@')//that means that the selected name is name of a client
         {
-            MembersNumber = 1;
-            var personalChat = await dbContext.PersonalChats
-                .Include(personalChat => personalChat.Messages)
-                .ThenInclude(message => message.SenderClient)
-                .GetPersonalChatAsync(SelectedChatName, _dbClient.Username);
-            ChatMessages.Clear();
-            if (personalChat != null)
-            {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    var messagesToShow = personalChat.Messages
-                        .Select(message => new MessageModel(message.SenderClient.Username, 
-                            message.TimeOfSending, 
-                            message.MessageContent))
-                        .ToList();
-                    
-                    foreach (var message in messagesToShow)
-                    {
-                        ChatMessages.Add(message);
-                    }
-                });
-            }
+            await HandlePersonalChatSelected(dbContext);
             return;
         }
-
+        
         //this executes if the selected chat name is name of a group
+        await HandleGroupSelected(dbContext);
+    }
+
+    private async Task HandleGroupSelected(IChatDbContext dbContext)
+    {
         var group = await dbContext.Groups
             .Include(g => g.Messages)
             .ThenInclude(message => message.SenderClient)
@@ -299,11 +283,12 @@ public class ChatViewModel: ObservableObject
                         message.TimeOfSending,
                         message.MessageContent))
                     .ToList();
-                
+
                 foreach (var message in messagesToShow)
                 {
                     ChatMessages.Add(message);
                 }
+
                 MembersNumber = group.GroupMembers.Count;
             });
             return;
@@ -314,5 +299,31 @@ public class ChatViewModel: ObservableObject
             MembersNumber = 0;
             ChatMessages.Clear();
         });
+    }
+
+    private async Task HandlePersonalChatSelected(IChatDbContext dbContext)
+    {
+        MembersNumber = 1;
+        var personalChat = await dbContext.PersonalChats
+            .Include(personalChat => personalChat.Messages)
+            .ThenInclude(message => message.SenderClient)
+            .GetPersonalChatAsync(SelectedChatName, _dbClient.Username);
+        ChatMessages.Clear();
+        if (personalChat != null)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var messagesToShow = personalChat.Messages
+                    .Select(message => new MessageModel(message.SenderClient.Username,
+                        message.TimeOfSending,
+                        message.MessageContent))
+                    .ToList();
+
+                foreach (var message in messagesToShow)
+                {
+                    ChatMessages.Add(message);
+                }
+            });
+        }
     }
 }

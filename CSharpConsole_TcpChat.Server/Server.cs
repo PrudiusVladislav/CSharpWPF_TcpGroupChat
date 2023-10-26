@@ -13,13 +13,13 @@ public class Server
 {
     private readonly Dictionary<string, ClientModel> _onlineClients = new Dictionary<string, ClientModel>();
     private readonly TcpListener listener;
-    private ChatDbContextFactory _dbContextFactory;
+    private readonly IChatDbContextFactory<IChatDbContext> _dbContextFactory;
 
     private record ConnectedDbClient(Client? Client, bool IsNew);
     private record ReceivedMessageData(int ByteOption, string ReceivedMessageContent);
     private record MessageToBroadcastInfo(ChatModel? MessageOriginChatModel, List<Client> ClientsReceivers);
     
-    public Server(IPAddress ipAddress, int port, ChatDbContextFactory contextFactory)
+    public Server(IPAddress ipAddress, int port, IChatDbContextFactory<IChatDbContext> contextFactory)
     {
         _dbContextFactory = contextFactory;
         listener = new TcpListener(ipAddress, port);
@@ -97,15 +97,15 @@ public class Server
                     break;
                 }
                 
-                Console.WriteLine($"[{DateTime.Now}] user with username {user.UserName} has sent message: {receivedMessageData.ReceivedMessageContent}");
+                var receivedMessageContent = MessageModel.GetMessagePart(receivedMessageData.ReceivedMessageContent, 1);
+                Console.WriteLine($"[{DateTime.Now}] user with username {user.UserName} has sent message: {receivedMessageContent}");
                 
                 //if the message type is not systemMessage, but common message, the structure of the message is:
                 //              "Name of chat it came from" | "Content of message"
                 //so messageCommand in this case is the name of chat (or client if it is personal chat)
                 
                 await using var dbContext = _dbContextFactory.CreateDbContext();
-                var receivedMessageContent = MessageModel.GetMessagePart(receivedMessageData.ReceivedMessageContent, 1);
-
+                
                 var messageInfo = await ConfigureMessageToBroadcastInfoAsync(dbContext, user, messageCommand);
 
                 await SendConfiguredMessage(user, messageInfo, receivedMessageContent, dbContext);
@@ -130,7 +130,7 @@ public class Server
         return acceptedUser;
     }
 
-    private async Task<ConnectedDbClient> GetOrCreateClientAsync(ChatDbContext dbContext, string receivedClientArguments)
+    private async Task<ConnectedDbClient> GetOrCreateClientAsync(IChatDbContext dbContext, string receivedClientArguments)
     {
         var username = MessageModel.GetMessagePart(receivedClientArguments, 0);
         var dbClientToConnect = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username.Equals(username));
@@ -181,7 +181,7 @@ public class Server
         });
     }
     
-    private async Task<Group> HandleAddGroupRequestAsync(ChatDbContext dbContext, string groupName, int clientCreatorId)
+    private async Task<Group> HandleAddGroupRequestAsync(IChatDbContext dbContext, string groupName, int clientCreatorId)
     {
         var newGroup = new Group() { GroupName = groupName };
         var clientCreator = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == clientCreatorId);
@@ -199,7 +199,7 @@ public class Server
         return newGroup;
     }
 
-    private async Task<MessageToBroadcastInfo?> ConfigureMessageToBroadcastInfoAsync(ChatDbContext dbContext, ClientModel user, string messageCommand)
+    private async Task<MessageToBroadcastInfo?> ConfigureMessageToBroadcastInfoAsync(IChatDbContext dbContext, ClientModel user, string messageCommand)
     {
         if (messageCommand[0] == '@') //the received chatName is name of a client
         {
@@ -209,7 +209,7 @@ public class Server
         return await ConfigureGroupMessageInfoAsync(dbContext, user, messageCommand);
     }
 
-    private async Task<MessageToBroadcastInfo?> ConfigurePersonalMessageInfoAsync(ChatDbContext dbContext, ClientModel user, string messageCommand)
+    private async Task<MessageToBroadcastInfo?> ConfigurePersonalMessageInfoAsync(IChatDbContext dbContext, ClientModel user, string messageCommand)
     {
         var receiverClient = await dbContext.Clients.FirstOrDefaultAsync(c => c.Username == messageCommand);
         if (receiverClient == null) return null;
@@ -236,7 +236,7 @@ public class Server
         return messageInfo;
     }
 
-    private async Task<MessageToBroadcastInfo?> ConfigureGroupMessageInfoAsync(ChatDbContext dbContext, ClientModel user, string messageCommand)
+    private async Task<MessageToBroadcastInfo?> ConfigureGroupMessageInfoAsync(IChatDbContext dbContext, ClientModel user, string messageCommand)
     {
         var receiverGroup = await dbContext.Groups
             .Include(g => g.GroupMembers)
@@ -262,7 +262,7 @@ public class Server
     }
     
     private async Task SendConfiguredMessage(ClientModel user, MessageToBroadcastInfo? messageInfo,
-        string receivedMessageContent, ChatDbContext dbContext)
+        string receivedMessageContent, IChatDbContext dbContext)
     {
         if (messageInfo?.MessageOriginChatModel == null) return;
         var dbMessage = new Message()
