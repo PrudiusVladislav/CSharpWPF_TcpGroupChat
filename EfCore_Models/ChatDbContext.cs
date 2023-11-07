@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Ef_Models;
 
-public class ChatDbContext: DbContext
+public class ChatDbContext: DbContext, IChatDbContext
 {
     public DbSet<Client> Clients { get; set; } = null!;
     public DbSet<Group> Groups { get; set; } = null!;

@@ -11,7 +11,7 @@ public class MainViewModel: ObservableObject
     public LoginViewModel? LoginVM { get; set; }
     public RegisterViewModel?  RegisterVM{ get; set; }
     public ChatViewModel? ChatVM { get; set; }
-    public ChatDbContextFactory ChatContextFactory { get;}
+    public IChatDbContextFactory<IChatDbContext> ChatContextFactory { get;}
     
     private volatile ObservableObject? _currentViewModel;
     public ObservableObject? CurrentViewModel
@@ -20,16 +20,14 @@ public class MainViewModel: ObservableObject
         set
         {
             _currentViewModel = value;
-            Console.WriteLine("Current view model changed");
             OnPropertyChanged();
         }
     }
 
-    public MainViewModel()
+    public MainViewModel(IChatDbContextFactory<IChatDbContext> chatContextFactory)
     {
-        ChatContextFactory = new ChatDbContextFactory();
+        ChatContextFactory = chatContextFactory;
         LoginVM = new LoginViewModel(this);
         CurrentViewModel = LoginVM;
     }
-    
 }
