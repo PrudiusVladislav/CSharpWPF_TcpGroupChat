@@ -62,16 +62,18 @@ Before entering the chat, every user should login or register
 
   ![SendMessage Demo](/Documentation_Images/SendMessage_Demo.gif)
 
-- **Creating a group chat**
-  You can also create a _new group chat_, instead of communicating within existing ones. All the group chats within this app are _public_, and anyone can access them. But to appear as a _member_ of the group chat, you need to send a message to the chat, unless you are the creator of the group. The process of creation of a new group looks like this:
+### Creating a group chat
 
-  ![AddGroup Demo](/Documentation_Images/AddGroup_Demo.gif)
+You can also create a _new group chat_, instead of communicating within existing ones. All the group chats within this app are _public_, and anyone can access them. But to appear as a _member_ of the group chat, you need to send a message to the chat, unless you are the creator of the group. The process of creation of a new group looks like this:
 
-  After that, the new group is going to appear in the list of chats:
+![AddGroup Demo](/Documentation_Images/AddGroup_Demo.gif)
 
-  ![Image](/Documentation_Images/NewGroup_Image.png)
+After that, the new group is going to appear in the list of chats:
 
-- **Disconnect**
-  After you've done everything you needed within the chat app, you can easily disconnect, by pressing the _disconnect button_:
+![Image](/Documentation_Images/NewGroup_Image.png)
 
-  ![Disconnect Demo](/Documentation_Images/Disconnect_Demo.gif)
+### Disconnect
+
+After you've done everything you needed within the chat app, you can easily disconnect, by pressing the _disconnect button_:
+
+![Disconnect Demo](/Documentation_Images/Disconnect_Demo.gif)
